@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { motion } from 'motion/react';
 import {
   Check,
@@ -13,25 +13,20 @@ import {
   RefreshCw,
   Smartphone,
   Sun,
-  Trash2,
   Wifi,
   WifiOff,
   X,
 } from 'lucide-react';
-import { ConfirmDialog } from '../components/Dialog';
 import { RoutingMatrix } from '../components/RoutingMatrix';
 import { EngineStatus } from '../components/Shell';
 import { Segmented, StatusDot, cx } from '../components/ui';
 import { cloudLabel, LOCAL_MODEL } from '../engine';
 import { browserInfo, promptApiExposed } from '../engine/chromeAI';
 import { SyncCard } from '../components/SyncCard';
-import { clearSessions } from '../lib/db';
 import type { EngineMode } from '../lib/types';
-import { useSessions } from '../lib/useSessions';
 import { useEngine } from '../state/engine';
 import { usePwa } from '../state/pwa';
 import { useTheme, type ThemePref } from '../state/theme';
-import { useToast } from '../state/toast';
 
 const MODES: { value: EngineMode; title: string; body: string; icon: typeof Cpu }[] = [
   { value: 'auto', title: 'Automatic', body: 'Prefer on-device. Use cloud Gemini when Nano isn’t available.', icon: RefreshCw },
@@ -51,9 +46,6 @@ export default function Settings() {
   const engine = useEngine();
   const { theme, setTheme } = useTheme();
   const pwa = usePwa();
-  const { push } = useToast();
-  const { sessions } = useSessions();
-  const [confirmClear, setConfirmClear] = useState(false);
   const info = browserInfo();
   const { local, online, downloadProgress } = engine;
 
@@ -281,15 +273,6 @@ export default function Settings() {
                   {pwa.offlineReady ? 'Cached' : import.meta.env.DEV ? 'Disabled in dev' : 'Preparing'}
                 </span>
               </Row>
-              <Row label="Saved conversations" hint={`${sessions.length} conversation${sessions.length === 1 ? '' : 's'} stored on this device.`}>
-                <button
-                  onClick={() => setConfirmClear(true)}
-                  disabled={!sessions.length}
-                  className="btn h-8 border border-line px-3 text-[13px] text-danger hover:bg-danger/8"
-                >
-                  <Trash2 className="size-3.5" /> Clear
-                </button>
-              </Row>
             </div>
           </Section>
         </div>
@@ -302,18 +285,6 @@ export default function Settings() {
         </aside>
       </div>
 
-      <ConfirmDialog
-        open={confirmClear}
-        title="Clear all saved conversations?"
-        body={`This permanently removes ${sessions.length} conversation${sessions.length === 1 ? '' : 's'} from this device. It can’t be undone.`}
-        confirmLabel="Clear all"
-        destructive
-        onClose={() => setConfirmClear(false)}
-        onConfirm={async () => {
-          await clearSessions();
-          push({ tone: 'info', title: 'Saved conversations cleared' });
-        }}
-      />
     </div>
   );
 }

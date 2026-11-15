@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, NavLink, useLocation, useParams } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { BookMarked, CheckCircle2, Cloud, Cpu, Download, Menu, Plus, Search, Settings, X } from 'lucide-react';
+import { BookMarked, CheckCircle2, Cloud, Cpu, Download, Menu, Plus, Search, Settings, Trash2, X } from 'lucide-react';
 import { useEngine } from '../state/engine';
 import { usePwa } from '../state/pwa';
 import { Logo, StatusDot, cx } from './ui';
@@ -10,6 +10,9 @@ import { useSync } from '../lib/sync';
 import { categoryById } from '../lib/categories';
 import { dayGroup } from '../lib/format';
 import type { Session } from '../lib/types';
+import { deleteSession } from '../lib/db';
+import { useToast } from '../state/toast';
+import { ConfirmDialog } from './Dialog';
 
 /** Compact live status: where the next request will run, plus Nano and sync state. */
 export function EngineStatus({ compact, static: isStatic }: { compact?: boolean; /** Render without the link (used on the Settings page itself). */ static?: boolean }) {
@@ -65,40 +68,50 @@ export function EngineStatus({ compact, static: isStatic }: { compact?: boolean;
   );
 }
 
-function ThreadItem({ s, active }: { s: Session; active: boolean }) {
+function ThreadItem({ s, active, onDelete }: { s: Session; active: boolean; onDelete(s: Session): void }) {
   const cat = categoryById(s.category);
   const Icon = cat.icon;
   const replies = (s.turns ?? []).filter((t) => t.role === 'assistant').length;
   return (
-    <Link
-      to={`/s/${s.id}`}
-      className={cx(
-        'group flex items-center gap-2.5 rounded-xl px-2 py-2 transition-colors',
-        active ? 'bg-surface shadow-card ring-1 ring-line' : 'hover:bg-surface-2/80',
-      )}
-    >
-      <span className={cx('grid size-7 shrink-0 place-items-center rounded-lg', cat.tint)}>
-        <Icon className="size-3.5" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className={cx('block truncate text-[13px]', active ? 'font-medium text-ink' : 'text-ink-2 group-hover:text-ink')}>{s.solution.title}</span>
-        <span className="flex items-center gap-1.5 text-[11px] text-ink-3">
-          {s.status === 'resolved' ? (
-            <span className="flex items-center gap-1 text-local">
-              <CheckCircle2 className="size-3" /> Resolved
-            </span>
-          ) : s.sample ? (
-            <span>Example</span>
-          ) : (
-            <span className="flex items-center gap-1">
-              {s.source === 'on-device' ? <Cpu className="size-3" /> : <Cloud className="size-3" />}
-              {s.source === 'on-device' ? 'On-device' : 'Cloud'}
-            </span>
-          )}
-          {replies > 0 && <span>· {replies + 1} replies</span>}
+    <div className="group relative">
+      <Link
+        to={`/s/${s.id}`}
+        className={cx(
+          'flex items-center gap-2.5 rounded-xl py-2 pr-10 pl-2 transition-colors',
+          active ? 'bg-surface shadow-card ring-1 ring-line' : 'hover:bg-surface-2/80',
+        )}
+      >
+        <span className={cx('grid size-7 shrink-0 place-items-center rounded-lg', cat.tint)}>
+          <Icon className="size-3.5" />
         </span>
-      </span>
-    </Link>
+        <span className="min-w-0 flex-1">
+          <span className={cx('block truncate text-[13px]', active ? 'font-medium text-ink' : 'text-ink-2 group-hover:text-ink')}>{s.solution.title}</span>
+          <span className="flex items-center gap-1.5 text-[11px] text-ink-3">
+            {s.status === 'resolved' ? (
+              <span className="flex items-center gap-1 text-local">
+                <CheckCircle2 className="size-3" /> Resolved
+              </span>
+            ) : s.sample ? (
+              <span>Example</span>
+            ) : (
+              <span className="flex items-center gap-1">
+                {s.source === 'on-device' ? <Cpu className="size-3" /> : <Cloud className="size-3" />}
+                {s.source === 'on-device' ? 'On-device' : 'Cloud'}
+              </span>
+            )}
+            {replies > 0 && <span>· {replies + 1} replies</span>}
+          </span>
+        </span>
+      </Link>
+      <button
+        onClick={() => onDelete(s)}
+        aria-label={`Delete “${s.solution.title}”`}
+        title="Delete conversation"
+        className="absolute top-1/2 right-1.5 grid size-7 -translate-y-1/2 place-items-center rounded-lg text-ink-3 transition hover:bg-danger/10 hover:text-danger focus-visible:opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+      >
+        <Trash2 className="size-3.5" />
+      </button>
+    </div>
   );
 }
 
@@ -109,6 +122,9 @@ function SidebarContent({ onNavigate }: { onNavigate?(): void }) {
   const activeId = id ?? pathname.match(/^\/s\/([^/]+)/)?.[1];
   const { canInstall, install } = usePwa();
   const [q, setQ] = useState('');
+  const [toDelete, setToDelete] = useState<Session | null>(null);
+  const navigate = useNavigate();
+  const { push } = useToast();
 
   const groups = useMemo(() => {
     const query = q.trim().toLowerCase();
@@ -157,7 +173,7 @@ function SidebarContent({ onNavigate }: { onNavigate?(): void }) {
               <p className="label mb-1 px-2">{label}</p>
               <div className="space-y-0.5">
                 {list.map((s) => (
-                  <ThreadItem key={s.id} s={s} active={s.id === activeId} />
+                  <ThreadItem key={s.id} s={s} active={s.id === activeId} onDelete={setToDelete} />
                 ))}
               </div>
             </div>
@@ -190,6 +206,21 @@ function SidebarContent({ onNavigate }: { onNavigate?(): void }) {
           </button>
         )}
       </div>
+
+      <ConfirmDialog
+        open={toDelete !== null}
+        title="Delete this conversation?"
+        body={toDelete ? `“${toDelete.solution.title}” will be permanently removed from this device and your synced account.` : ''}
+        confirmLabel="Delete"
+        destructive
+        onClose={() => setToDelete(null)}
+        onConfirm={async () => {
+          if (!toDelete) return;
+          await deleteSession(toDelete.id);
+          if (toDelete.id === activeId) navigate('/', { replace: true });
+          push({ tone: 'info', title: 'Conversation deleted' });
+        }}
+      />
     </div>
   );
 }
