@@ -1,8 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
-import { ArrowUp, BookMarked, Cloud, Cpu, ScanSearch } from 'lucide-react';
+import { ArrowUp, BookMarked, Cloud, Cpu } from 'lucide-react';
 import { motion } from 'motion/react';
-import { CATEGORIES } from '../lib/categories';
-import type { CategoryId } from '../lib/types';
 import { useEngine } from '../state/engine';
 import { planRoute } from '../engine';
 import { Kbd, cx } from './ui';
@@ -14,8 +12,6 @@ export interface ComposerHandle {
 interface Props {
   value: string;
   onChange(v: string): void;
-  category: CategoryId | 'auto';
-  onCategory(c: CategoryId | 'auto'): void;
   onSubmit(): void;
 }
 
@@ -23,7 +19,7 @@ const MIN = 8;
 const MAX = 1200;
 
 export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
-  { value, onChange, category, onCategory, onSubmit },
+  { value, onChange, onSubmit },
   ref,
 ) {
   const ta = useRef<HTMLTextAreaElement>(null);
@@ -68,34 +64,6 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
         placeholder="Describe what's happening — what you see, hear or smell, and when it started…"
         className="block min-h-[120px] w-full resize-none bg-transparent px-5 pt-5 pb-2 text-[16px] leading-relaxed text-ink placeholder:text-ink-3 focus:outline-none sm:text-[17px]"
       />
-
-      <div className="no-scrollbar flex gap-1.5 overflow-x-auto px-4 pb-3 sm:flex-wrap" role="radiogroup" aria-label="Category">
-        <button
-          type="button"
-          role="radio"
-          aria-checked={category === 'auto'}
-          onClick={() => onCategory('auto')}
-          className={cx('chip shrink-0', category === 'auto' && '!border-ink !bg-ink !text-canvas')}
-        >
-          <ScanSearch className="size-3.5" /> Auto-detect
-        </button>
-        {CATEGORIES.filter((c) => c.id !== 'other').map((c) => {
-          const Icon = c.icon;
-          const on = category === c.id;
-          return (
-            <button
-              type="button"
-              role="radio"
-              aria-checked={on}
-              key={c.id}
-              onClick={() => onCategory(on ? 'auto' : c.id)}
-              className={cx('chip shrink-0', on && '!border-ink !bg-ink !text-canvas')}
-            >
-              <Icon className={cx('size-3.5', !on && c.tint.split(' ').filter((x) => x.startsWith('text-') || x.startsWith('dark:')).join(' '))} /> {c.label}
-            </button>
-          );
-        })}
-      </div>
 
       <div className="flex items-center gap-3 border-t border-line bg-surface-2/50 px-4 py-3">
         <div className="flex min-w-0 flex-1 items-center gap-2 text-[12.5px]" title={route.reason}>

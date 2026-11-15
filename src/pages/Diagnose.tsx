@@ -1,18 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowRight, ArrowUpRight, Cloud, Cpu, ShieldCheck, Wifi, WifiOff } from 'lucide-react';
+import { ArrowRight, Wifi, WifiOff } from 'lucide-react';
 import { Composer, type ComposerHandle } from '../components/Composer';
 import { Analyzing } from '../components/Analyzing';
 import { ErrorPanel, OfflineFallback } from '../components/Fallback';
 import { RoutingMatrix } from '../components/RoutingMatrix';
 import { SessionCard } from '../components/SessionCard';
-import { StatusDot, cx } from '../components/ui';
+import { StatusDot } from '../components/ui';
 import { EngineUnavailableError, planRoute, runDiagnosis, sessionFromResult, type Route } from '../engine';
-import { EXAMPLE_PROMPTS } from '../lib/samples';
-import { categoryById, detectCategory } from '../lib/categories';
+import { detectCategory } from '../lib/categories';
 import { putSession } from '../lib/db';
-import type { CategoryId } from '../lib/types';
 import { useSessions } from '../lib/useSessions';
 import { useEngine } from '../state/engine';
 
@@ -39,7 +37,6 @@ export default function Diagnose() {
   const abort = useRef<AbortController | null>(null);
 
   const [text, setText] = useState(readDraft);
-  const [category, setCategory] = useState<CategoryId | 'auto'>('auto');
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
 
   useEffect(() => {
@@ -55,7 +52,7 @@ export default function Diagnose() {
   async function submit() {
     const problem = text.trim();
     if (!problem) return;
-    const cat = category === 'auto' ? detectCategory(problem) : category;
+    const cat = detectCategory(problem);
     const { online, local, mode } = engine;
     const route = planRoute({ online, local, mode }, { problemLength: problem.length });
 
@@ -117,21 +114,6 @@ export default function Diagnose() {
           <h1 className="text-[34px] leading-[1.05] font-semibold tracking-[-0.035em] text-balance sm:text-[44px]">
             What’s going <span className="text-brand">wrong?</span>
           </h1>
-          <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-pretty text-ink-2 sm:text-base">
-            Describe the problem in your own words. PocketOps finds likely causes, walks you through the fix step by step,
-            and flags safety risks — even without a connection.
-          </p>
-          <ul className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-[13px] font-medium text-ink-2">
-            <li className="flex items-center gap-1.5">
-              <WifiOff className="size-3.5 text-local" /> Works offline
-            </li>
-            <li className="flex items-center gap-1.5">
-              <Cpu className="size-3.5 text-local" /> Private on-device AI
-            </li>
-            <li className="flex items-center gap-1.5">
-              <Cloud className="size-3.5 text-cloud" /> Cloud Gemini when it helps
-            </li>
-          </ul>
         </motion.header>
 
         <AnimatePresence mode="wait" initial={false}>
@@ -154,39 +136,7 @@ export default function Diagnose() {
               transition={{ type: 'spring', stiffness: 300, damping: 30, delay: 0.05 }}
               className="space-y-9"
             >
-              <Composer ref={composer} value={text} onChange={setText} category={category} onCategory={setCategory} onSubmit={submit} />
-
-              <section aria-labelledby="examples">
-                <h2 id="examples" className="label mb-3">
-                  Try an example
-                </h2>
-                <div className="grid gap-2.5 sm:grid-cols-2">
-                  {EXAMPLE_PROMPTS.map((ex, i) => {
-                    const cat = categoryById(ex.category);
-                    const Icon = cat.icon;
-                    return (
-                      <motion.button
-                        key={ex.text}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.12 + i * 0.05, type: 'spring', stiffness: 300, damping: 30 }}
-                        onClick={() => {
-                          setText(ex.text);
-                          setCategory(ex.category);
-                          composer.current?.focus();
-                        }}
-                        className="group card card-hover flex items-start gap-3 p-3.5 text-left"
-                      >
-                        <span className={cx('grid size-9 shrink-0 place-items-center rounded-xl', cat.tint)}>
-                          <Icon className="size-4" strokeWidth={1.8} />
-                        </span>
-                        <span className="flex-1 text-[13.5px] leading-snug text-ink-2 transition group-hover:text-ink">{ex.text}</span>
-                        <ArrowUpRight className="mt-0.5 size-3.5 shrink-0 text-ink-3 opacity-0 transition group-hover:opacity-100" />
-                      </motion.button>
-                    );
-                  })}
-                </div>
-              </section>
+              <Composer ref={composer} value={text} onChange={setText} onSubmit={submit} />
 
               {recent.length > 0 && (
                 <section aria-labelledby="recent">
@@ -213,25 +163,6 @@ export default function Diagnose() {
       <aside className="hidden space-y-4 lg:block">
         <div className="sticky top-12 space-y-4">
           <RoutingMatrix problemLength={text.trim().length} />
-          <div className="card p-4">
-            <div className="flex items-start gap-3">
-              <span
-                className={cx(
-                  'grid size-8 shrink-0 place-items-center rounded-lg',
-                  engine.route.target === 'on-device' ? 'bg-local/12 text-local' : 'bg-surface-2 text-ink-2',
-                )}
-              >
-                <ShieldCheck className="size-4" />
-              </span>
-              <div>
-                <p className="text-[13.5px] font-medium">Private by default</p>
-                <p className="mt-1 text-[12.5px] leading-relaxed text-ink-3">
-                  When Gemini Nano is ready, your problem is processed on this device and never sent to the cloud. Every
-                  answer is labelled with where it came from.
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
       </aside>
     </div>
