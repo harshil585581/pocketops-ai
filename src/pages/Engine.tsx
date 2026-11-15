@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { ConfirmDialog } from '../components/Dialog';
 import { RoutingMatrix } from '../components/RoutingMatrix';
+import { EngineStatus } from '../components/Shell';
 import { Segmented, StatusDot, cx } from '../components/ui';
 import { cloudLabel, LOCAL_MODEL } from '../engine';
 import { browserInfo, promptApiExposed } from '../engine/chromeAI';
@@ -290,6 +291,7 @@ export default function Engine() {
 
         <aside className="space-y-4">
           <RoutingMatrix />
+          <EngineStatus static />
         </aside>
       </div>
 

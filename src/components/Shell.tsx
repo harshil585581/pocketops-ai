@@ -12,7 +12,7 @@ import { dayGroup } from '../lib/format';
 import type { Session } from '../lib/types';
 
 /** Compact live status: where the next request will run, plus Nano and sync state. */
-export function EngineStatus({ compact }: { compact?: boolean }) {
+export function EngineStatus({ compact, static: isStatic }: { compact?: boolean; /** Render without the link (used on the Engine page itself). */ static?: boolean }) {
   const { online, local, route } = useEngine();
   const sync = useSync();
   const routeTone = route.target === 'on-device' ? 'local' : route.target === 'cloud' ? 'cloud' : 'danger';
@@ -33,11 +33,15 @@ export function EngineStatus({ compact }: { compact?: boolean }) {
     ['Sync', syncTone, { disabled: 'Off', connecting: 'Connecting', syncing: 'Syncing', synced: 'Synced', offline: 'Queued', error: 'Error' }[sync.status]],
     ['Routing to', routeTone, route.target === 'none' ? 'Unavailable' : routeLabel, true],
   ];
-  return (
-    <NavLink to="/engine" className="group block rounded-xl border border-line bg-surface-2/60 p-3 transition hover:border-line-strong">
+  const body = (
+    <>
       <div className="mb-2.5 flex items-center justify-between">
-        <span className="label">Engine</span>
-        <span className="text-[11px] text-ink-3 transition group-hover:text-ink-2">Details →</span>
+        <span className="label">{isStatic ? 'Live status' : 'Engine'}</span>
+        {isStatic ? (
+          <StatusDot tone={routeTone} pulse={route.target !== 'none'} />
+        ) : (
+          <span className="text-[11px] text-ink-3 transition group-hover:text-ink-2">Details →</span>
+        )}
       </div>
       <ul className="space-y-1.5 text-[13px]">
         {rows.map(([label, tone, value, pulse]) => (
@@ -50,6 +54,13 @@ export function EngineStatus({ compact }: { compact?: boolean }) {
           </li>
         ))}
       </ul>
+    </>
+  );
+  return isStatic ? (
+    <div className="card p-4">{body}</div>
+  ) : (
+    <NavLink to="/engine" className="group block rounded-xl border border-line bg-surface-2/60 p-3 transition hover:border-line-strong">
+      {body}
     </NavLink>
   );
 }
