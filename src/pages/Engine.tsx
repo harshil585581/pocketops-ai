@@ -107,6 +107,11 @@ export default function Engine() {
 
       <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-8">
+          {/* Live status first on mobile (desktop shows it at the top of the right column) */}
+          <div className="lg:hidden">
+            <EngineStatus static />
+          </div>
+
           {/* Mode */}
           <Section title="Routing preference" desc="Choose how PocketOps picks an AI engine for each request.">
             <div className="grid gap-2.5 sm:grid-cols-3" role="radiogroup">
@@ -290,8 +295,10 @@ export default function Engine() {
         </div>
 
         <aside className="space-y-4">
+          <div className="hidden lg:block">
+            <EngineStatus static />
+          </div>
           <RoutingMatrix />
-          <EngineStatus static />
         </aside>
       </div>
 
