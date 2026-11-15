@@ -76,7 +76,8 @@ Production build with the service worker: `npm run build && npm run preview`.
 2. **AI Logic.** Console → AI Logic → Get started → **Gemini Developer API**.
 3. **App Check.** Console → App Check → Apps → your web app → **reCAPTCHA Enterprise** (create a website key for
    `localhost` and your hosting domains) → put the key in `VITE_RECAPTCHA_ENTERPRISE_SITE_KEY`.
-   For localhost, add a debug token (App Check → Apps → ⋮ → Manage debug tokens) to `VITE_APPCHECK_DEBUG_TOKEN`.
+   For `npm run dev`, add a debug token (App Check → Apps → ⋮ → Manage debug tokens) to `VITE_APPCHECK_DEBUG_TOKEN`.
+   It is only used in development builds and is stripped from production bundles.
 4. **Authentication.** Console → Authentication → Get started → enable **Anonymous** and **Google**.
 5. **Firestore.** Console → Firestore Database → Create database.
 6. **Deploy rules, Remote Config template and Hosting:**

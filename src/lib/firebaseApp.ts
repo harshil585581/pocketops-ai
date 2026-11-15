@@ -18,7 +18,9 @@ const config = {
 export const firebaseConfigured = Boolean(config.apiKey && config.projectId && config.appId);
 
 const RECAPTCHA_SITE_KEY = env.VITE_RECAPTCHA_ENTERPRISE_SITE_KEY as string | undefined;
-const APPCHECK_DEBUG_TOKEN = env.VITE_APPCHECK_DEBUG_TOKEN as string | undefined;
+// Dev builds only: `import.meta.env.DEV` is replaced with `false` in production, so the
+// debug token is stripped from the deployed bundle and can't be used to bypass App Check.
+const APPCHECK_DEBUG_TOKEN = import.meta.env.DEV ? (env.VITE_APPCHECK_DEBUG_TOKEN as string | undefined) : undefined;
 export const appCheckConfigured = Boolean(RECAPTCHA_SITE_KEY);
 
 let appPromise: Promise<FirebaseApp> | null = null;
@@ -30,7 +32,7 @@ export function getFirebaseApp(): Promise<FirebaseApp> {
     const { initializeApp, getApps } = await import('firebase/app');
     const app = getApps()[0] ?? initializeApp(config);
     if (RECAPTCHA_SITE_KEY) {
-      if (APPCHECK_DEBUG_TOKEN && (env.DEV || location.hostname === 'localhost')) {
+      if (APPCHECK_DEBUG_TOKEN) {
         // A registered debug token lets localhost pass App Check
         // (Firebase console → App Check → Apps → ⋮ → Manage debug tokens).
         (self as unknown as { FIREBASE_APPCHECK_DEBUG_TOKEN?: string }).FIREBASE_APPCHECK_DEBUG_TOKEN = APPCHECK_DEBUG_TOKEN;
