@@ -17,7 +17,8 @@ export function parseSolution(raw: string): Solution {
   const causes = (Array.isArray(j.causes) ? j.causes : [])
     .map((c: Record<string, unknown>) => ({
       title: str(c?.title),
-      detail: str(c?.detail),
+      // Smaller models sometimes repeat the likelihood in the text; the UI already shows it.
+      detail: str(c?.detail).replace(/\s*\(?likelihood:?\s*(high|medium|low)\)?\.?\s*$/i, ''),
       likelihood: oneOf<Likelihood>(c?.likelihood, ['high', 'medium', 'low'], 'medium'),
     }))
     .filter((c) => c.title);
