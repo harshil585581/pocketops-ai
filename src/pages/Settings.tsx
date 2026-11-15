@@ -1,5 +1,4 @@
-import type { ReactNode } from 'react';
-import { motion } from 'motion/react';
+import { useState, type ReactNode } from 'react';
 import {
   Check,
   CircleSlash,
@@ -8,6 +7,8 @@ import {
   Download,
   Laptop,
   Loader2,
+  LogIn,
+  LogOut,
   Monitor,
   Moon,
   RefreshCw,
@@ -15,14 +16,14 @@ import {
   Sun,
   Wifi,
   WifiOff,
-  X,
 } from 'lucide-react';
 import { RoutingMatrix } from '../components/RoutingMatrix';
 import { EngineStatus } from '../components/Shell';
 import { Segmented, StatusDot, cx } from '../components/ui';
 import { cloudLabel, LOCAL_MODEL } from '../engine';
-import { browserInfo, promptApiExposed } from '../engine/chromeAI';
-import { SyncCard } from '../components/SyncCard';
+import { browserInfo } from '../engine/chromeAI';
+import { signInWithGoogle, signOutOfSync, useSync } from '../lib/sync';
+import { useToast } from '../state/toast';
 import type { EngineMode } from '../lib/types';
 import { useEngine } from '../state/engine';
 import { usePwa } from '../state/pwa';
@@ -34,13 +35,6 @@ const MODES: { value: EngineMode; title: string; body: string; icon: typeof Cpu 
   { value: 'cloud-only', title: 'Cloud only', body: 'Always use the more capable cloud model. Requires internet.', icon: Cloud },
 ];
 
-const LOCAL_LABEL = {
-  available: 'Ready',
-  downloadable: 'Download required',
-  downloading: 'Downloading',
-  unavailable: 'Not supported on this device',
-  unsupported: 'Not available in this browser',
-} as const;
 
 export default function Settings() {
   const engine = useEngine();
@@ -51,16 +45,6 @@ export default function Settings() {
 
   const localTone = local === 'available' ? 'local' : local === 'downloading' || local === 'downloadable' ? 'warn' : 'muted';
 
-  const requirements: { ok: boolean; label: string; detail: string }[] = [
-    {
-      ok: info.isChrome && (info.chromeVersion ?? 0) >= 139,
-      label: 'Chrome 139 or later',
-      detail: info.isChrome ? `Detected Chrome ${info.chromeVersion}` : 'Hybrid inference needs desktop Chrome',
-    },
-    { ok: info.desktop, label: 'Desktop device', detail: info.desktop ? 'Windows, macOS, Linux or ChromeOS' : 'Mobile isn’t supported yet' },
-    { ok: promptApiExposed(), label: 'Prompt API enabled', detail: promptApiExposed() ? 'LanguageModel API detected' : 'Not exposed by this browser' },
-    { ok: local === 'available', label: 'Gemini Nano downloaded', detail: LOCAL_LABEL[local] },
-  ];
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-10 lg:py-12">
@@ -149,94 +133,52 @@ export default function Settings() {
             </p>
           </Section>
 
-          {/* Model setup */}
-          <Section title="On-device AI" desc="Gemini Nano is managed by Chrome. Download it once while online, then use it anywhere.">
-            {local === 'available' && downloadProgress === null ? (
-              <div className="card flex flex-wrap items-center gap-3 p-4">
-                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-local/12 text-local">
-                  <Check className="size-4.5" strokeWidth={2.5} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[14px] font-medium">Gemini Nano is ready</p>
-                  <p className="text-[12.5px] text-ink-3">Diagnoses and follow-ups work on this device, even without internet.</p>
-                </div>
-                <button onClick={engine.refresh} className="btn-ghost h-8 text-[13px]">
-                  <RefreshCw className={cx('size-3.5', engine.checking && 'animate-spin')} /> Re-check
-                </button>
-              </div>
-            ) : (
-            <>
-            <div className="card overflow-hidden">
-              <ul className="divide-y divide-line">
-                {requirements.map((r) => (
-                  <li key={r.label} className="flex items-center gap-3 px-4 py-3">
-                    <span
-                      className={cx(
-                        'grid size-5 shrink-0 place-items-center rounded-full',
-                        r.ok ? 'bg-local/15 text-local' : 'bg-surface-3 text-ink-3',
-                      )}
-                    >
-                      {r.ok ? <Check className="size-3" strokeWidth={3} /> : <X className="size-3" strokeWidth={3} />}
-                    </span>
-                    <span className="flex-1 text-[13.5px] font-medium">{r.label}</span>
-                    <span className="truncate text-right text-[12.5px] text-ink-3">{r.detail}</span>
-                  </li>
-                ))}
-              </ul>
-              <div className="border-t border-line bg-surface-2/50 p-4">
-                {downloadProgress !== null ? (
-                  <div>
-                    <div className="mb-2 flex justify-between text-[13px]">
-                      <span className="flex items-center gap-2 font-medium">
-                        <Loader2 className="size-3.5 animate-spin text-local" /> Downloading Gemini Nano
-                      </span>
-                      <span className="font-mono text-ink-3 tabular-nums">{Math.round(downloadProgress * 100)}%</span>
-                    </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-line-strong">
-                      <motion.div className="h-full rounded-full bg-local" animate={{ width: `${downloadProgress * 100}%` }} />
-                    </div>
-                    <p className="mt-2 text-[12px] text-ink-3">Keep this tab open. Chrome continues the download in the background.</p>
-                  </div>
-                ) : local === 'available' ? (
-                  <p className="flex items-center gap-2 text-[13.5px] text-local">
-                    <Check className="size-4" /> Gemini Nano is ready. Diagnoses work without internet.
-                  </p>
-                ) : local === 'downloadable' || local === 'downloading' ? (
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-[13px] text-ink-2">
-                      {online ? 'The model is a one-time download of a few GB.' : 'Connect to the internet to download.'}
-                    </p>
-                    <button onClick={engine.download} disabled={!online} className="btn-primary h-9">
-                      <Download className="size-4" /> {local === 'downloading' ? 'Resume download' : 'Download model'}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-start gap-2.5 text-[13px] leading-relaxed text-ink-2">
-                    <CircleSlash className="mt-0.5 size-4 shrink-0 text-ink-3" />
-                    <span>
-                      On-device AI isn’t available here. PocketOps will use cloud Gemini when online and show saved guidance when
-                      offline. Try Chrome 139+ on desktop with the Prompt API enabled.
-                    </span>
-                  </div>
-                )}
-                {engine.downloadError && <p className="mt-2 text-[12.5px] text-danger">{engine.downloadError}</p>}
-              </div>
-            </div>
-            <button onClick={engine.refresh} className="btn-ghost mt-2 h-8 text-[13px]">
-              <RefreshCw className={cx('size-3.5', engine.checking && 'animate-spin')} /> Re-check availability
-            </button>
-            </>
-            )}
-          </Section>
-
-          {/* Sync */}
-          <Section title="Cloud sync" desc="Firebase Authentication and Cloud Firestore keep a backup of your saved guides.">
-            <SyncCard />
-          </Section>
-
           {/* App */}
-          <Section title="App" desc="Appearance, installation and local data.">
+          <Section title="App" desc="On-device AI, your account, appearance and installation.">
             <div className="card divide-y divide-line">
+              <Row
+                label="Gemini Nano"
+                hint={
+                  downloadProgress !== null
+                    ? 'Downloading the on-device model — keep this tab open.'
+                    : local === 'available'
+                      ? 'Ready — diagnoses and follow-ups work on this device, even offline.'
+                      : local === 'downloadable' || local === 'downloading'
+                        ? online
+                          ? 'One-time download (about 4 GB) to enable offline AI.'
+                          : 'Connect to the internet to download the model.'
+                        : 'Not available on this device — PocketOps uses cloud Gemini when online.'
+                }
+              >
+                {downloadProgress !== null ? (
+                  <span className="flex items-center gap-1.5 font-mono text-[13px] text-local tabular-nums">
+                    <Loader2 className="size-3.5 animate-spin" /> {Math.round(downloadProgress * 100)}%
+                  </span>
+                ) : local === 'available' ? (
+                  <span className="flex items-center gap-2">
+                    <span className="flex items-center gap-1.5 text-[13px] font-medium text-local">
+                      <Check className="size-4" /> Ready
+                    </span>
+                    <button onClick={engine.refresh} aria-label="Re-check" title="Re-check" className="grid size-8 place-items-center rounded-lg text-ink-3 hover:bg-surface-2 hover:text-ink">
+                      <RefreshCw className={cx('size-3.5', engine.checking && 'animate-spin')} />
+                    </button>
+                  </span>
+                ) : local === 'downloadable' || local === 'downloading' ? (
+                  <button onClick={engine.download} disabled={!online} className="btn-primary h-8 text-[13px]">
+                    <Download className="size-3.5" /> {local === 'downloading' ? 'Resume' : 'Download'}
+                  </button>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <span className="flex items-center gap-1.5 text-[13px] text-ink-3">
+                      <CircleSlash className="size-3.5" /> Unavailable
+                    </span>
+                    <button onClick={engine.refresh} aria-label="Re-check" title="Re-check" className="grid size-8 place-items-center rounded-lg text-ink-3 hover:bg-surface-2 hover:text-ink">
+                      <RefreshCw className={cx('size-3.5', engine.checking && 'animate-spin')} />
+                    </button>
+                  </span>
+                )}
+              </Row>
+              <AccountRow />
               <Row label="Appearance" hint="Match your system or pick a theme.">
                 <Segmented<ThemePref>
                   value={theme}
@@ -343,5 +285,44 @@ function Row({ label, hint, children }: { label: string; hint: string; children:
       </div>
       <div className="shrink-0">{children}</div>
     </div>
+  );
+}
+
+function AccountRow() {
+  const sync = useSync();
+  const { push } = useToast();
+  const [busy, setBusy] = useState(false);
+  const google = async () => {
+    setBusy(true);
+    try {
+      await signInWithGoogle();
+    } catch (e) {
+      push({ tone: 'error', title: 'Sign-in failed', body: e instanceof Error ? e.message : undefined });
+    } finally {
+      setBusy(false);
+    }
+  };
+  const syncText =
+    sync.status === 'error'
+      ? sync.error
+      : { disabled: 'Sync not configured.', connecting: 'Connecting…', syncing: 'Syncing…', synced: 'Synced with Cloud Firestore.', offline: 'Offline — changes will sync later.' }[
+          sync.status as Exclude<typeof sync.status, 'error'>
+        ];
+  return (
+    <Row
+      label={sync.uid ? (sync.isAnonymous ? 'Anonymous account' : sync.email || 'Google account') : 'Account'}
+      hint={`${sync.uid && sync.isAnonymous ? 'Backed up for this browser. Sign in to sync across devices. ' : ''}${syncText ?? ''}`}
+    >
+      {sync.uid &&
+        (sync.isAnonymous ? (
+          <button onClick={google} disabled={busy || sync.status === 'offline'} className="btn-primary h-8 text-[13px]">
+            {busy ? <Loader2 className="size-3.5 animate-spin" /> : <LogIn className="size-3.5" />} Sign in with Google
+          </button>
+        ) : (
+          <button onClick={() => signOutOfSync()} className="btn-secondary h-8 text-[13px]">
+            <LogOut className="size-3.5" /> Sign out
+          </button>
+        ))}
+    </Row>
   );
 }
