@@ -102,7 +102,7 @@ export async function runDiagnosis(
   problem: string,
   category: CategoryId,
   snap: EngineSnapshot,
-  opts: { depth?: Depth; signal?: AbortSignal } = {},
+  opts: { depth?: Depth; signal?: AbortSignal; onText?: (text: string) => void } = {},
 ): Promise<DiagnosisResult> {
   const depth = opts.depth ?? 'quick';
   const route = planRoute(snap, { problemLength: problem.length, depth });
@@ -116,7 +116,7 @@ export async function runDiagnosis(
   const deep = { model: cfg.deepModel, timeoutMs: DEEP_TIMEOUT_MS };
 
   const attempt = async (mode: InferenceMode, cloud = depth === 'deep' ? deep : quick): Promise<DiagnosisResult> => {
-    const r = await generateWithFirebase(prompt, mode, cloud, opts.signal);
+    const r = await generateWithFirebase(prompt, mode, cloud, opts.signal, opts.onText);
     return {
       solution: parseSolution(r.text),
       category,
@@ -174,7 +174,7 @@ export async function runFollowUp(
   session: Session,
   message: string,
   snap: EngineSnapshot,
-  opts: { signal?: AbortSignal } = {},
+  opts: { signal?: AbortSignal; onText?: (text: string) => void } = {},
 ): Promise<FollowUpResult> {
   const route = planRoute(snap, { problemLength: message.length });
   if (route.target === 'none' || !route.inferenceMode) throw new EngineUnavailableError(route.reason);
@@ -184,7 +184,7 @@ export async function runFollowUp(
   const cloud = { model: cfg.cloudModel, timeoutMs: QUICK_TIMEOUT_MS, schema: 'followup' as const };
 
   const attempt = async (mode: InferenceMode): Promise<FollowUpResult> => {
-    const r = await generateWithFirebase(prompt, mode, cloud, opts.signal);
+    const r = await generateWithFirebase(prompt, mode, cloud, opts.signal, opts.onText);
     return {
       reply: parseFollowUp(r.text),
       source: r.source,

@@ -20,7 +20,7 @@ import {
   X,
 } from 'lucide-react';
 import { ConfirmDialog } from '../components/Dialog';
-import { GuideView, ProfessionalNote, SafetyCallout, StepList } from '../components/GuideView';
+import { GuideAnswer, MessageActions, ReplyAnswer, StreamingAnswer, answerText } from '../components/Answer';
 import { Logo, SeverityBadge, SourceBadge, cx } from '../components/ui';
 import {
   EngineUnavailableError,
@@ -74,6 +74,7 @@ export default function Thread() {
 
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState<Pending | null>(null);
+  const [stream, setStream] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const abort = useRef<AbortController | null>(null);
@@ -107,6 +108,11 @@ export default function Thread() {
   useEffect(() => {
     if (turnCount || pending) bottom.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [turnCount, pending]);
+  useEffect(() => {
+    if (!stream) return;
+    const nearBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 320;
+    if (nearBottom) bottom.current?.scrollIntoView({ block: 'end' });
+  }, [stream]);
 
   if (session === undefined) return <ThreadSkeleton />;
   if (session === null) return <NotFound />;
@@ -153,17 +159,19 @@ export default function Thread() {
     const ac = new AbortController();
     abort.current = ac;
     setError(null);
+    setStream('');
     setPending({ route, deep });
     try {
       const turn: AssistantTurn = deep
-        ? guideTurn(await runDiagnosis(base.problem, base.category, snap, { depth: 'deep', signal: ac.signal }))
-        : replyTurn(await runFollowUp(base, user.text, snap, { signal: ac.signal }));
+        ? guideTurn(await runDiagnosis(base.problem, base.category, snap, { depth: 'deep', signal: ac.signal, onText: setStream }))
+        : replyTurn(await runFollowUp(base, user.text, snap, { signal: ac.signal, onText: setStream }));
       await update((s) => ({ ...s, turns: [...(s.turns ?? []), turn] }));
     } catch (e) {
       if (ac.signal.aborted) setError('Stopped. Send your message again when you’re ready.');
       else setError(e instanceof EngineUnavailableError ? e.message : e instanceof Error ? e.message : 'Something went wrong.');
     } finally {
       setPending(null);
+      setStream('');
     }
   }
 
@@ -188,6 +196,47 @@ export default function Thread() {
     if (!latest || !last || last.role !== 'user') return setError(null);
     respond({ ...latest, turns: latest.turns!.slice(0, -1) }, last);
   };
+
+  /** Replace the latest answer with a fresh one. */
+  const regenerateLast = async () => {
+    const latest = await getSession(session.id);
+    const ts = latest?.turns ?? [];
+    const last = ts.at(-1);
+    const prevUser = ts.at(-2);
+    if (!latest || last?.role !== 'assistant' || prevUser?.role !== 'user') return;
+    await update((s) => ({ ...s, turns: (s.turns ?? []).slice(0, -1) }));
+    respond({ ...latest, turns: ts.slice(0, -2) }, prevUser);
+  };
+
+  /** Regenerate the very first guide (only while it is the only answer). */
+  const regenerateInitial = async () => {
+    const route = planRoute(snap, { problemLength: session.problem.length });
+    if (route.target === 'none') return setError(route.reason);
+    const ac = new AbortController();
+    abort.current = ac;
+    setError(null);
+    setStream('');
+    setPending({ route, deep: false });
+    try {
+      const r = await runDiagnosis(session.problem, session.category, snap, { signal: ac.signal, onText: setStream });
+      await update((s) => ({
+        ...s,
+        solution: r.solution,
+        source: r.source,
+        model: r.model,
+        durationMs: r.durationMs,
+        inferenceMode: r.inferenceMode,
+        completedSteps: [],
+      }));
+    } catch (e) {
+      if (!ac.signal.aborted) setError(e instanceof Error ? e.message : 'Something went wrong.');
+    } finally {
+      setPending(null);
+      setStream('');
+    }
+  };
+
+  const answerQuestion = (question: string, option: string) => send(`${option} — re: “${question}”`);
 
   const stepFailed = (i: number, st: Step) => {
     setDraft(`Step ${i + 1} (“${st.title}”) didn’t work: `);
@@ -216,6 +265,9 @@ export default function Thread() {
   };
 
   const lastIsAssistant = !turns.length || turns[turns.length - 1].role === 'assistant';
+  const lastAnswer = [...turns].reverse().find((t): t is AssistantTurn => t.role === 'assistant');
+  const modelSuggestions = lastAnswer ? (lastAnswer.kind === 'reply' ? lastAnswer.reply.suggestions : lastAnswer.solution.suggestions) : sol.suggestions;
+  const suggestions = modelSuggestions?.length ? modelSuggestions : SUGGESTIONS;
 
   return (
     <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col lg:min-h-dvh">
@@ -271,11 +323,19 @@ export default function Thread() {
           at={session.createdAt}
           extra={<SeverityBadge severity={sol.severity} />}
         >
-          <h1 className="mb-4 text-[24px] leading-tight font-semibold tracking-[-0.025em] text-balance sm:text-[28px]">{sol.title}</h1>
-          <GuideView solution={sol} done={new Set(session.completedSteps)} onToggle={toggleInitial} onStepFailed={stepFailed} />
+          <h1 className="mb-3 text-[22px] leading-tight font-semibold tracking-[-0.025em] text-balance sm:text-[26px]">{sol.title}</h1>
+          <GuideAnswer
+            solution={sol}
+            done={new Set(session.completedSteps)}
+            onToggle={toggleInitial}
+            onStepFailed={stepFailed}
+            onAnswer={sol.question ? (o) => answerQuestion(sol.question!.text, o) : undefined}
+            answered={turns.length > 0}
+          />
+          <MessageActions text={answerText({ solution: sol })} onRegenerate={!turns.length && !pending ? regenerateInitial : undefined} />
         </Assistant>
 
-        {turns.map((t) =>
+        {turns.map((t, idx) =>
           t.role === 'user' ? (
             t.action === 'deep' ? (
               <div key={t.id} className="flex justify-center">
@@ -303,22 +363,28 @@ export default function Thread() {
               }
             >
               {t.kind === 'guide' ? (
-                <GuideView solution={t.solution} done={new Set(t.completedSteps)} onToggle={(i) => toggleTurnStep(t.id, i)} onStepFailed={stepFailed} />
+                <GuideAnswer
+                  solution={t.solution}
+                  done={new Set(t.completedSteps)}
+                  onToggle={(i) => toggleTurnStep(t.id, i)}
+                  onStepFailed={stepFailed}
+                  onAnswer={t.solution.question ? (o) => answerQuestion(t.solution.question!.text, o) : undefined}
+                  answered={idx < turns.length - 1}
+                />
               ) : (
-                <div className="space-y-4">
-                  <p className="text-[15.5px] leading-relaxed whitespace-pre-line text-ink">{t.reply.message}</p>
-                  <SafetyCallout items={t.reply.safety} title="Safety for these steps" />
-                  {t.reply.steps.length > 0 && (
-                    <StepList
-                      steps={t.reply.steps}
-                      done={new Set(t.completedSteps)}
-                      onToggle={(i) => toggleTurnStep(t.id, i)}
-                      onStepFailed={stepFailed}
-                    />
-                  )}
-                  {t.reply.seekProfessional && <ProfessionalNote />}
-                </div>
+                <ReplyAnswer
+                  reply={t.reply}
+                  done={new Set(t.completedSteps)}
+                  onToggle={(i) => toggleTurnStep(t.id, i)}
+                  onStepFailed={stepFailed}
+                  onAnswer={t.reply.question ? (o) => answerQuestion(t.reply.question!.text, o) : undefined}
+                  answered={idx < turns.length - 1}
+                />
               )}
+              <MessageActions
+                text={answerText(t.kind === 'guide' ? { solution: t.solution } : { reply: t.reply })}
+                onRegenerate={idx === turns.length - 1 && !pending ? regenerateLast : undefined}
+              />
             </Assistant>
           ),
         )}
@@ -326,7 +392,12 @@ export default function Thread() {
         <AnimatePresence>
           {pending && (
             <motion.div key="thinking" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <Thinking route={pending.route} deep={pending.deep} onCancel={() => abort.current?.abort()} />
+              <div className="flex gap-3">
+                <Logo className="mt-0.5 hidden size-7 shrink-0 sm:block" />
+                <div className="min-w-0 flex-1">
+                  <StreamingAnswer raw={stream} route={pending.route} deep={pending.deep} onStop={() => abort.current?.abort()} />
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -378,7 +449,7 @@ export default function Thread() {
                   <Sparkles className="size-3.5" /> Deep analysis
                 </button>
               )}
-              {SUGGESTIONS.map((q) => (
+              {suggestions.map((q) => (
                 <button key={q} onClick={() => send(q)} disabled={composerRoute.target === 'none'} className="chip disabled:opacity-50">
                   {q}
                 </button>
@@ -515,46 +586,6 @@ function Assistant({
   );
 }
 
-const STAGES = ['Reading your message', 'Checking what you’ve tried', 'Working out next steps', 'Checking safety'];
-
-function Thinking({ route, deep, onCancel }: { route: Route; deep: boolean; onCancel(): void }) {
-  const [i, setI] = useState(0);
-  const [t, setT] = useState(0);
-  useEffect(() => {
-    const t0 = performance.now();
-    const a = setInterval(() => setI((x) => Math.min(x + 1, STAGES.length - 1)), 1400);
-    const b = setInterval(() => setT(performance.now() - t0), 100);
-    return () => {
-      clearInterval(a);
-      clearInterval(b);
-    };
-  }, []);
-  const local = route.target === 'on-device';
-  return (
-    <div className="flex gap-3" aria-live="polite" aria-busy="true">
-      <Logo className="mt-0.5 hidden size-7 shrink-0 sm:block" />
-      <div className="card relative min-w-0 flex-1 overflow-hidden p-4">
-        <div className="absolute inset-x-0 top-0 h-0.5 overflow-hidden bg-line">
-          <div className="scan" />
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className={cx('inline-flex h-6 items-center gap-1.5 rounded-full px-2 text-[11.5px] font-medium', local ? 'bg-local/10 text-local' : 'bg-cloud/10 text-cloud')}>
-            {local ? <Cpu className="size-3" /> : <Cloud className="size-3" />}
-            {deep ? 'Deep analysis' : local ? 'On-device' : 'Cloud'} · <span className="font-mono">{route.model}</span>
-          </span>
-          <span className="font-mono text-[11px] text-ink-3 tabular-nums">{(t / 1000).toFixed(1)}s</span>
-          <button onClick={onCancel} className="btn-ghost ml-auto h-7 px-2 text-[12px]">
-            <X className="size-3.5" /> Stop
-          </button>
-        </div>
-        <p className="mt-3 flex items-center gap-2 text-[14px] text-ink-2">
-          <Loader2 className="size-4 animate-spin text-ink-3" />
-          {deep ? 'Running a deeper analysis…' : STAGES[i] + '…'}
-        </p>
-      </div>
-    </div>
-  );
-}
 
 function ThreadSkeleton() {
   return (

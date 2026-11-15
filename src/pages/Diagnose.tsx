@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { Wifi, WifiOff } from 'lucide-react';
 import { Composer, type ComposerHandle } from '../components/Composer';
-import { Analyzing } from '../components/Analyzing';
+import { StreamingAnswer } from '../components/Answer';
 import { ErrorPanel, OfflineFallback } from '../components/Fallback';
-import { StatusDot } from '../components/ui';
+import { Logo, StatusDot } from '../components/ui';
 import { EngineUnavailableError, planRoute, runDiagnosis, sessionFromResult, type Route } from '../engine';
 import { detectCategory } from '../lib/categories';
 import { putSession } from '../lib/db';
@@ -34,6 +34,7 @@ export default function Diagnose() {
 
   const [text, setText] = useState(readDraft);
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
+  const [stream, setStream] = useState('');
 
   useEffect(() => {
     try {
@@ -59,11 +60,12 @@ export default function Diagnose() {
 
     const ac = new AbortController();
     abort.current = ac;
+    setStream('');
     setPhase({ kind: 'running', route });
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     try {
-      const r = await runDiagnosis(problem, cat, { online, local, mode }, { signal: ac.signal });
+      const r = await runDiagnosis(problem, cat, { online, local, mode }, { signal: ac.signal, onText: setStream });
       const session = sessionFromResult(problem, r);
       await putSession(session);
       setText('');
@@ -112,7 +114,19 @@ export default function Diagnose() {
 
         <AnimatePresence mode="wait" initial={false}>
           {phase.kind === 'running' ? (
-            <Analyzing key="run" problem={text.trim()} route={phase.route} onCancel={() => abort.current?.abort()} />
+            <motion.div key="run" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6 text-left">
+              <div className="flex justify-end">
+                <div className="max-w-[85%] rounded-2xl rounded-br-md border border-line bg-gradient-to-br from-local/[0.08] to-cloud/[0.08] px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-line text-ink">
+                  {text.trim()}
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <Logo className="mt-0.5 hidden size-7 shrink-0 sm:block" />
+                <div className="min-w-0 flex-1">
+                  <StreamingAnswer raw={stream} route={phase.route} onStop={() => abort.current?.abort()} />
+                </div>
+              </div>
+            </motion.div>
           ) : phase.kind === 'fallback' ? (
             <motion.div key="fb" exit={{ opacity: 0 }}>
               <OfflineFallback problem={text.trim()} reason={phase.reason} onBack={back} />

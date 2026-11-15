@@ -60,14 +60,31 @@ export async function generateWithFirebase(
   mode: InferenceMode,
   cloud: CloudOptions,
   signal?: AbortSignal,
+  /** Receives the accumulated text as it streams in. */
+  onText?: (text: string) => void,
 ): Promise<{ text: string; source: 'on-device' | 'cloud' }> {
   const model = await getModel(mode, cloud);
   try {
-    const result = await model.generateContent(prompt, { signal });
+    if (!onText) {
+      const result = await model.generateContent(prompt, { signal });
+      return { text: result.response.text(), source: result.response.inferenceSource === 'on_device' ? 'on-device' : 'cloud' };
+    }
+    // Streaming: render the answer while it's being written (on-device and in the cloud).
+    const result = await model.generateContentStream(prompt, { signal });
+    let text = '';
+    for await (const chunk of result.stream) {
+      try {
+        text += chunk.text();
+      } catch {
+        /* chunk without text (e.g. a finish marker) */
+      }
+      onText(text);
+    }
+    const final = await result.response;
     return {
-      text: result.response.text(),
+      text: text || final.text(),
       // The SDK reports which side actually answered.
-      source: result.response.inferenceSource === 'on_device' ? 'on-device' : 'cloud',
+      source: final.inferenceSource === 'on_device' ? 'on-device' : 'cloud',
     };
   } catch (e) {
     throw friendlyError(e, cloud.model);

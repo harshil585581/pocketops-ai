@@ -12,10 +12,21 @@ export interface Step {
   detail: string;
 }
 
+/** A clarifying question the user can answer with one tap. */
+export interface Question {
+  text: string;
+  options: string[];
+}
+
 /** Structured guidance produced by any engine (on-device, cloud or demo). */
 export interface Solution {
   title: string;
   summary: string;
+  /** Conversational lead-in (light markdown). Falls back to summary for older guides. */
+  answer?: string;
+  question?: Question;
+  /** Model-suggested next questions. */
+  suggestions?: string[];
   severity: Severity;
   causes: Cause[];
   steps: Step[];
@@ -69,10 +80,15 @@ export interface Session {
 
 /** A conversational follow-up answer (lighter than a full guide). */
 export interface FollowUp {
+  /** Conversational answer (light markdown). */
   message: string;
   steps: Step[];
   safety: string[];
   seekProfessional: boolean;
+  verdict?: { level: 'safe' | 'caution' | 'unsafe'; reason: string };
+  tools?: string[];
+  question?: Question;
+  suggestions?: string[];
 }
 
 interface AssistantMeta {

@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { Check, HardHat, Lightbulb, ListChecks, MessageCircleQuestion, ShieldAlert } from 'lucide-react';
 import type { Solution, Step } from '../lib/types';
 import { LikelihoodMeter, SectionTitle, cx } from './ui';
+import { Inline } from './Markdown';
 
 export function SafetyCallout({ items, title = 'Before you start — safety' }: { items: string[]; title?: string }) {
   if (!items.length) return null;
@@ -15,7 +16,7 @@ export function SafetyCallout({ items, title = 'Before you start — safety' }: 
         {items.map((x) => (
           <li key={x} className="flex gap-2.5 text-[14px] leading-relaxed text-ink">
             <span className="mt-[9px] size-1.5 shrink-0 rounded-full bg-warn" />
-            {x}
+            <span><Inline text={x} /></span>
           </li>
         ))}
       </ul>
@@ -66,10 +67,10 @@ export function StepList({
               </span>
               <span className="min-w-0 flex-1">
                 <span className={cx('block text-[15px] font-medium tracking-tight transition-colors', checked ? 'text-ink-3 line-through decoration-ink-3/50' : 'text-ink')}>
-                  {st.title}
+                  <Inline text={st.title} />
                 </span>
                 {st.detail && (
-                  <span className={cx('mt-1 block text-[13.5px] leading-relaxed transition-colors', checked ? 'text-ink-3' : 'text-ink-2')}>{st.detail}</span>
+                  <span className={cx('mt-1 block text-[13.5px] leading-relaxed transition-colors', checked ? 'text-ink-3' : 'text-ink-2')}><Inline text={st.detail} /></span>
                 )}
               </span>
             </button>
