@@ -37,6 +37,7 @@ export const SOLUTION_JSON_SCHEMA = {
     severity: { type: 'string', enum: ['low', 'medium', 'high'] },
     causes: {
       type: 'array',
+      minItems: 3,
       items: {
         type: 'object',
         properties: {
@@ -49,6 +50,7 @@ export const SOLUTION_JSON_SCHEMA = {
     },
     steps: {
       type: 'array',
+      minItems: 4,
       items: {
         type: 'object',
         properties: { title: { type: 'string' }, detail: { type: 'string' } },
