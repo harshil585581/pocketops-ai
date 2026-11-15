@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { MobileHeader, MobileTabBar, Sidebar } from './components/Shell';
+import { MobileHeader, Sidebar } from './components/Shell';
 import { EngineProvider, useEngine } from './state/engine';
 import { PwaProvider } from './state/pwa';
 import { ThemeProvider } from './state/theme';
@@ -12,7 +12,7 @@ import { startSync } from './lib/sync';
 import Diagnose from './pages/Diagnose';
 
 const History = lazy(() => import('./pages/History'));
-const SessionDetail = lazy(() => import('./pages/SessionDetail'));
+const Thread = lazy(() => import('./pages/Thread'));
 const Engine = lazy(() => import('./pages/Engine'));
 
 function ConnectivityToasts() {
@@ -51,7 +51,7 @@ function AnimatedRoutes() {
           <Routes location={location}>
             <Route path="/" element={<Diagnose />} />
             <Route path="/saved" element={<History />} />
-            <Route path="/s/:id" element={<SessionDetail />} />
+            <Route path="/s/:id" element={<Thread />} />
             <Route path="/engine" element={<Engine />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
@@ -83,10 +83,9 @@ export default function App() {
               </a>
               <Sidebar />
               <MobileHeader />
-              <main id="main" className="min-h-dvh pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0 lg:pl-64">
+              <main id="main" className="min-h-dvh lg:pl-72">
                 <AnimatedRoutes />
               </main>
-              <MobileTabBar />
               <ConnectivityToasts />
             </BrowserRouter>
           </EngineProvider>

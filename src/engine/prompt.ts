@@ -1,4 +1,4 @@
-import type { CategoryId } from '../lib/types';
+import type { CategoryId, Session } from '../lib/types';
 
 export const SYSTEM_INSTRUCTION = `You are PocketOps, a calm, practical troubleshooting assistant for people fixing real-world problems with devices, machines, vehicles, home systems and equipment — often in the field with poor connectivity.
 
@@ -62,4 +62,57 @@ export const SOLUTION_JSON_SCHEMA = {
     seekProfessional: { type: 'boolean' },
   },
   required: ['title', 'summary', 'severity', 'causes', 'steps', 'safety', 'ifNotResolved', 'seekProfessional'],
+} as const;
+
+const FOLLOWUP_INSTRUCTION = `You are PocketOps, a calm, practical troubleshooting assistant. The user already received a troubleshooting guide and is following up in the same conversation.
+
+Respond ONLY with a JSON object matching the provided schema:
+- message: 2–4 sentences that directly answer the user's latest message, referring to what they tried.
+- steps: 0–6 NEW concrete steps to try next (empty if the message is just an explanation). Don't repeat steps the user already completed.
+- safety: precautions relevant to these next steps (empty array if none).
+- seekProfessional: true when they should now involve a qualified technician.
+
+Prefer safe, reversible checks. Never instruct anyone to bypass safety devices. Be concise and specific.`;
+
+/** Builds a compact follow-up prompt (kept short so it also fits Gemini Nano's context). */
+export function buildFollowUpPrompt(session: Session, message: string, instructionOverride = ''): string {
+  const sol = session.solution;
+  const done = new Set(session.completedSteps);
+  const lines = [
+    instructionOverride ? `${instructionOverride}\n\n${FOLLOWUP_INSTRUCTION}` : FOLLOWUP_INSTRUCTION,
+    '',
+    `Original problem: """${session.problem.trim()}"""`,
+    `Guide given: ${sol.title}. Likely causes: ${sol.causes.map((c) => c.title).join('; ')}.`,
+    `Steps: ${sol.steps.map((st, i) => `${i + 1}. ${st.title}${done.has(i) ? ' (done)' : ''}`).join(' ')}`,
+  ];
+  const history = (session.turns ?? []).slice(-6);
+  if (history.length) {
+    lines.push('', 'Conversation so far:');
+    for (const t of history) {
+      if (t.role === 'user') lines.push(`User: ${t.action === 'deep' ? '(asked for a deep analysis)' : t.text}`);
+      else if (t.kind === 'reply')
+        lines.push(`PocketOps: ${t.reply.message}${t.reply.steps.length ? ` Suggested: ${t.reply.steps.map((x) => x.title).join('; ')}.` : ''}`);
+      else lines.push(`PocketOps: (deep analysis) ${t.solution.summary}`);
+    }
+  }
+  lines.push('', `User's new message: """${message.trim()}"""`);
+  return lines.join('\n');
+}
+
+export const FOLLOWUP_JSON_SCHEMA = {
+  type: 'object',
+  properties: {
+    message: { type: 'string' },
+    steps: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: { title: { type: 'string' }, detail: { type: 'string' } },
+        required: ['title', 'detail'],
+      },
+    },
+    safety: { type: 'array', items: { type: 'string' } },
+    seekProfessional: { type: 'boolean' },
+  },
+  required: ['message', 'steps', 'safety', 'seekProfessional'],
 } as const;

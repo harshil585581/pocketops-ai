@@ -4,7 +4,7 @@
  */
 import type { GenerativeModel, InferenceMode, ThinkingLevel } from 'firebase/ai';
 import { getFirebaseApp } from '../lib/firebaseApp';
-import { SOLUTION_JSON_SCHEMA } from './prompt';
+import { FOLLOWUP_JSON_SCHEMA, SOLUTION_JSON_SCHEMA } from './prompt';
 
 export { firebaseConfigured } from '../lib/firebaseApp';
 
@@ -12,12 +12,17 @@ export interface CloudOptions {
   /** Gemini model for the cloud side of the request. */
   model: string;
   timeoutMs: number;
+  /** Which response shape to request: a full guide or a conversational follow-up. */
+  schema?: 'solution' | 'followup';
 }
+
+const SCHEMAS = { solution: SOLUTION_JSON_SCHEMA, followup: FOLLOWUP_JSON_SCHEMA };
 
 const models = new Map<string, Promise<GenerativeModel>>();
 
-function getModel(mode: InferenceMode, { model: cloudModel, timeoutMs }: CloudOptions): Promise<GenerativeModel> {
-  const key = `${mode}:${cloudModel}:${timeoutMs}`;
+function getModel(mode: InferenceMode, { model: cloudModel, timeoutMs, schema = 'solution' }: CloudOptions): Promise<GenerativeModel> {
+  const key = `${mode}:${cloudModel}:${timeoutMs}:${schema}`;
+  const jsonSchema = SCHEMAS[schema];
   let p = models.get(key);
   if (!p) {
     p = (async () => {
@@ -28,13 +33,13 @@ function getModel(mode: InferenceMode, { model: cloudModel, timeoutMs }: CloudOp
         {
           mode,
           // On-device (Gemini Nano via Chrome's Prompt API) is constrained to the same JSON schema.
-          onDeviceParams: { promptOptions: { responseConstraint: SOLUTION_JSON_SCHEMA } },
+          onDeviceParams: { promptOptions: { responseConstraint: jsonSchema } },
           inCloudParams: {
             model: cloudModel,
             generationConfig: {
               responseMimeType: 'application/json',
               // Same JSON Schema as on-device, so both models return an identical shape.
-              responseJsonSchema: SOLUTION_JSON_SCHEMA as unknown as Record<string, unknown>,
+              responseJsonSchema: jsonSchema as unknown as Record<string, unknown>,
               temperature: 0.4,
               // Low thinking keeps structured troubleshooting answers fast.
               thinkingConfig: { thinkingLevel: 'LOW' as ThinkingLevel },

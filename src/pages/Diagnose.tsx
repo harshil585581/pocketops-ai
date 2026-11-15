@@ -1,17 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowRight, Wifi, WifiOff } from 'lucide-react';
+import { Wifi, WifiOff } from 'lucide-react';
 import { Composer, type ComposerHandle } from '../components/Composer';
 import { Analyzing } from '../components/Analyzing';
 import { ErrorPanel, OfflineFallback } from '../components/Fallback';
-import { RoutingMatrix } from '../components/RoutingMatrix';
-import { SessionCard } from '../components/SessionCard';
 import { StatusDot } from '../components/ui';
 import { EngineUnavailableError, planRoute, runDiagnosis, sessionFromResult, type Route } from '../engine';
 import { detectCategory } from '../lib/categories';
 import { putSession } from '../lib/db';
-import { useSessions } from '../lib/useSessions';
 import { useEngine } from '../state/engine';
 
 type Phase =
@@ -32,7 +29,6 @@ const readDraft = () => {
 export default function Diagnose() {
   const engine = useEngine();
   const navigate = useNavigate();
-  const { sessions } = useSessions();
   const composer = useRef<ComposerHandle>(null);
   const abort = useRef<AbortController | null>(null);
 
@@ -90,18 +86,16 @@ export default function Diagnose() {
     requestAnimationFrame(() => composer.current?.focus());
   };
 
-  const recent = sessions.slice(0, 3);
-
   return (
-    <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-8 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-10 lg:px-10 lg:py-12">
+    <div className="mx-auto flex min-h-[calc(100dvh-3.5rem)] max-w-3xl flex-col justify-center px-4 py-10 sm:px-6 lg:min-h-dvh">
       <div className="min-w-0">
         <motion.header
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.25, 1, 0.5, 1] }}
-          className="mb-7 lg:mb-9"
+          className="mb-7 text-center lg:mb-9"
         >
-          <div className="mb-4 flex flex-wrap items-center gap-2">
+          <div className="mb-4 flex flex-wrap items-center justify-center gap-2">
             <span className="inline-flex h-6 items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 text-[11.5px] font-medium text-ink-2">
               {engine.online ? <Wifi className="size-3" /> : <WifiOff className="size-3 text-warn" />}
               {engine.online ? 'Online' : 'Offline'}
@@ -134,37 +128,18 @@ export default function Diagnose() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6, transition: { duration: 0.15 } }}
               transition={{ type: 'spring', stiffness: 300, damping: 30, delay: 0.05 }}
-              className="space-y-9"
+              className="space-y-4"
             >
               <Composer ref={composer} value={text} onChange={setText} onSubmit={submit} />
+              <p className="text-center text-[12px] text-ink-3">
+                Each problem becomes a conversation — follow up in the same thread until it’s fixed.
+              </p>
 
-              {recent.length > 0 && (
-                <section aria-labelledby="recent">
-                  <div className="mb-3 flex items-center justify-between">
-                    <h2 id="recent" className="label">
-                      Recent on this device
-                    </h2>
-                    <Link to="/saved" className="flex items-center gap-1 text-[12.5px] text-ink-3 transition hover:text-ink">
-                      View all <ArrowRight className="size-3" />
-                    </Link>
-                  </div>
-                  <div className="space-y-2">
-                    {recent.map((s) => (
-                      <SessionCard key={s.id} s={s} dense />
-                    ))}
-                  </div>
-                </section>
-              )}
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      <aside className="hidden space-y-4 lg:block">
-        <div className="sticky top-12 space-y-4">
-          <RoutingMatrix problemLength={text.trim().length} />
-        </div>
-      </aside>
     </div>
   );
 }

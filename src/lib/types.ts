@@ -61,4 +61,34 @@ export interface Session {
   parentId?: string;
   /** Built-in example data, shown with an "Example" tag and never synced. */
   sample?: boolean;
+  /** Conversation after the first guide: follow-up questions, replies and deep analyses. */
+  turns?: Turn[];
+  /** Troubleshooting outcome set by the user. */
+  status?: 'open' | 'resolved';
 }
+
+/** A conversational follow-up answer (lighter than a full guide). */
+export interface FollowUp {
+  message: string;
+  steps: Step[];
+  safety: string[];
+  seekProfessional: boolean;
+}
+
+interface AssistantMeta {
+  id: string;
+  role: 'assistant';
+  createdAt: number;
+  source: InferenceSource;
+  model: string;
+  durationMs: number;
+  inferenceMode?: string;
+  completedSteps: number[];
+}
+
+export type Turn =
+  | { id: string; role: 'user'; createdAt: number; text: string; action?: 'deep' }
+  | (AssistantMeta & { kind: 'reply'; reply: FollowUp })
+  | (AssistantMeta & { kind: 'guide'; solution: Solution; depth: 'quick' | 'deep' });
+
+export type AssistantTurn = Extract<Turn, { role: 'assistant' }>;

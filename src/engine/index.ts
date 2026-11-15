@@ -10,12 +10,12 @@
  *   local-only / cloud-only overrides → ONLY_ON_DEVICE / ONLY_IN_CLOUD
  */
 import type { InferenceMode } from 'firebase/ai';
-import type { CategoryId, EngineMode, InferenceSource, Session, Solution } from '../lib/types';
+import type { AssistantTurn, CategoryId, EngineMode, FollowUp, InferenceSource, Session, Solution } from '../lib/types';
 import type { LocalAvailability } from './chromeAI';
 import { CloudBusyError, firebaseConfigured, generateWithFirebase } from './firebase';
 import { getRuntimeConfig } from '../lib/remoteConfig';
-import { buildPrompt, type Depth } from './prompt';
-import { parseSolution } from './parse';
+import { buildFollowUpPrompt, buildPrompt, type Depth } from './prompt';
+import { parseFollowUp, parseSolution } from './parse';
 
 export type { Depth } from './prompt';
 
@@ -160,6 +160,60 @@ export function sessionFromResult(problem: string, r: DiagnosisResult, extra: Pa
     ...extra,
   };
 }
+
+export interface FollowUpResult {
+  reply: FollowUp;
+  source: InferenceSource;
+  model: string;
+  durationMs: number;
+  inferenceMode: InferenceMode;
+}
+
+/** Continues a troubleshooting conversation. Routed exactly like a new diagnosis. */
+export async function runFollowUp(
+  session: Session,
+  message: string,
+  snap: EngineSnapshot,
+  opts: { signal?: AbortSignal } = {},
+): Promise<FollowUpResult> {
+  const route = planRoute(snap, { problemLength: message.length });
+  if (route.target === 'none' || !route.inferenceMode) throw new EngineUnavailableError(route.reason);
+  const t0 = performance.now();
+  const cfg = getRuntimeConfig();
+  const prompt = buildFollowUpPrompt(session, message, cfg.systemInstruction);
+  const cloud = { model: cfg.cloudModel, timeoutMs: QUICK_TIMEOUT_MS, schema: 'followup' as const };
+
+  const attempt = async (mode: InferenceMode): Promise<FollowUpResult> => {
+    const r = await generateWithFirebase(prompt, mode, cloud, opts.signal);
+    return {
+      reply: parseFollowUp(r.text),
+      source: r.source,
+      model: r.source === 'on-device' ? LOCAL_MODEL : cloudLabel(cloud.model),
+      durationMs: Math.round(performance.now() - t0),
+      inferenceMode: mode,
+    };
+  };
+  try {
+    return await attempt(route.inferenceMode);
+  } catch (err) {
+    if (opts.signal?.aborted) throw err;
+    const canRetryCloud = snap.online && snap.mode === 'auto' && route.inferenceMode !== 'only_in_cloud';
+    if (canRetryCloud && (err instanceof SyntaxError || /structured guidance/i.test(String(err)))) return attempt('only_in_cloud');
+    throw err;
+  }
+}
+
+const turnId = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+
+export function replyTurn(r: FollowUpResult): AssistantTurn {
+  return { id: turnId(), role: 'assistant', kind: 'reply', createdAt: Date.now(), reply: r.reply, source: r.source, model: r.model, durationMs: r.durationMs, inferenceMode: r.inferenceMode, completedSteps: [] };
+}
+
+export function guideTurn(r: DiagnosisResult): AssistantTurn {
+  return { id: turnId(), role: 'assistant', kind: 'guide', createdAt: Date.now(), solution: r.solution, depth: r.depth, source: r.source, model: r.model, durationMs: r.durationMs, inferenceMode: r.inferenceMode, completedSteps: [] };
+}
+
+export const userTurn = (text: string, action?: 'deep') => ({ id: turnId(), role: 'user' as const, createdAt: Date.now(), text, action });
 
 export class EngineUnavailableError extends Error {
   name = 'EngineUnavailableError';

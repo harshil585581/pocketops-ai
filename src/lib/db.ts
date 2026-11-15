@@ -48,6 +48,24 @@ export async function putSession(s: Session) {
   emit();
 }
 
+/**
+ * Atomic read-modify-write in one IndexedDB transaction, so rapid edits (e.g. ticking
+ * several steps quickly) can't overwrite each other. `fn` must be synchronous.
+ */
+export async function updateSession(id: string, fn: (s: Session) => Session): Promise<Session | undefined> {
+  const tx = (await db()).transaction(STORE, 'readwrite');
+  const current = (await tx.store.get(id)) as Session | undefined;
+  if (!current) {
+    await tx.done;
+    return undefined;
+  }
+  const next = { ...fn(normalize(current)), updatedAt: Date.now() };
+  await tx.store.put(next);
+  await tx.done;
+  emit();
+  return next;
+}
+
 /** Sync-initiated write: stores the record exactly as given. */
 export async function putSessionRaw(s: Session) {
   await (await db()).put(STORE, s);

@@ -20,6 +20,9 @@ your progress, and what to do if the problem persists.
 - **Cloud when it helps.** If the local model isn't available, Firebase AI Logic falls back to Gemini Flash.
   Long, detailed descriptions go to the cloud first, and a **Deep analysis** button hands an on-device triage
   to Gemini Flash for confirming tests and more thorough steps.
+- **Conversations, not one-shot answers.** Each problem becomes a thread. If a step doesn't work, tap "Didn't work?"
+  or just reply. PocketOps answers with new steps using the whole history as context, on-device or in the cloud.
+  Threads are marked Resolved when the fix works.
 - **Always transparent.** Each answer is labelled with where it ran, using the SDK's `inferenceSource`.
 - **Graceful offline mode.** With no network and no local model, the app explains why and shows related guides
   saved on the device.

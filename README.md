@@ -52,7 +52,9 @@ All AI requests go through `firebase/ai` — there is no other inference path.
 
 - Natural-language problem input with category hints and a live preview of where the request will run
 - Structured guide: likely causes ranked by likelihood, safety precautions first, a step checklist with saved progress, and escalation advice
-- **Deep analysis**: hand an on-device triage to cloud Gemini for confirming tests and more detailed steps (linked to the original guide)
+- **Troubleshooting conversations**: every problem is a thread in the sidebar. Follow up in the same thread ("step 2 didn't work, it's still clicking") and get new steps with the full history as context; works on-device offline too
+- **Built for fixing things**: a "Didn't work?" button on every step, a "Did this fix it?" check that marks threads Resolved, and one-tap follow-up suggestions
+- **Deep analysis**: hand the problem to the more capable cloud model inside the same thread
 - Source label on every answer (`Generated locally · Gemini Nano` / `Generated in cloud · Gemini Flash`)
 - Saved guides in IndexedDB, searchable and filterable, available offline, synced via Firestore
 - Engine screen: live network, model and cloud status; Gemini Nano download with progress; routing preference
