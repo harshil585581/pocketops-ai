@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { BookMarked, CheckCircle2, Cloud, Cpu, Download, Menu, Plus, Search, Settings, Trash2, X } from 'lucide-react';
+import { BookOpen, CheckCircle2, Cloud, Cpu, Download, Menu, Plus, Search, Settings, Trash2, X } from 'lucide-react';
 import { useEngine } from '../state/engine';
 import { usePwa } from '../state/pwa';
 import { Logo, StatusDot, cx } from './ui';
@@ -182,19 +182,29 @@ function SidebarContent({ onNavigate }: { onNavigate?(): void }) {
       </nav>
 
       <div className="space-y-2 border-t border-line pt-3">
-        <div className="grid grid-cols-2 gap-1">
+        <div className="grid grid-cols-2 gap-2">
           <NavLink
-            to="/saved"
+            to="/guide"
             className={({ isActive }) =>
-              cx('flex h-9 items-center gap-2 rounded-lg px-2.5 text-[13px] font-medium transition', isActive ? 'bg-surface text-ink shadow-card' : 'text-ink-2 hover:bg-surface-2')
+              cx(
+                'flex h-9 items-center gap-2 rounded-lg border px-2.5 text-[13px] font-medium transition',
+                isActive
+                  ? 'border-local/40 bg-local/15 text-local shadow-card'
+                  : 'border-local/15 bg-local/[0.07] text-local hover:border-local/30 hover:bg-local/12',
+              )
             }
           >
-            <BookMarked className="size-4" /> All guides
+            <BookOpen className="size-4" /> How it works
           </NavLink>
           <NavLink
             to="/settings"
             className={({ isActive }) =>
-              cx('flex h-9 items-center gap-2 rounded-lg px-2.5 text-[13px] font-medium transition', isActive ? 'bg-surface text-ink shadow-card' : 'text-ink-2 hover:bg-surface-2')
+              cx(
+                'flex h-9 items-center gap-2 rounded-lg border px-2.5 text-[13px] font-medium transition',
+                isActive
+                  ? 'border-cloud/40 bg-cloud/15 text-cloud shadow-card'
+                  : 'border-cloud/15 bg-cloud/[0.07] text-cloud hover:border-cloud/30 hover:bg-cloud/12',
+              )
             }
           >
             <Settings className="size-4" /> Settings

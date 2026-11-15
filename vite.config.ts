@@ -32,7 +32,7 @@ export default defineConfig({
         ],
         shortcuts: [
           { name: 'New diagnosis', url: '/', icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }] },
-          { name: 'Saved guidance', url: '/saved', icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }] },
+          { name: 'How it works', url: '/guide', icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }] },
         ],
       },
       workbox: {

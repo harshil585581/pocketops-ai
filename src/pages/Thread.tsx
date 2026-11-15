@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import {
   ArrowLeft,
   ArrowUp,
-  BookMarked,
+  BookOpen,
   CheckCircle2,
   ClipboardCopy,
   Cloud,
@@ -583,8 +583,8 @@ function NotFound() {
         <Link to="/" className="btn-primary">
           <ArrowLeft className="size-4" /> New diagnosis
         </Link>
-        <Link to="/saved" className="btn-secondary">
-          <BookMarked className="size-4" /> All guides
+        <Link to="/guide" className="btn-secondary">
+          <BookOpen className="size-4" /> How it works
         </Link>
       </div>
     </div>

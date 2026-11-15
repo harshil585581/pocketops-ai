@@ -11,7 +11,7 @@ import { initRemoteConfig } from './lib/remoteConfig';
 import { startSync } from './lib/sync';
 import Diagnose from './pages/Diagnose';
 
-const History = lazy(() => import('./pages/History'));
+const Guide = lazy(() => import('./pages/Guide'));
 const Thread = lazy(() => import('./pages/Thread'));
 const Settings = lazy(() => import('./pages/Settings'));
 
@@ -50,7 +50,8 @@ function AnimatedRoutes() {
         <Suspense fallback={<div className="min-h-[60vh]" />}>
           <Routes location={location}>
             <Route path="/" element={<Diagnose />} />
-            <Route path="/saved" element={<History />} />
+            <Route path="/guide" element={<Guide />} />
+            <Route path="/saved" element={<Navigate to="/guide" replace />} />
             <Route path="/s/:id" element={<Thread />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/engine" element={<Navigate to="/settings" replace />} />
