@@ -27,6 +27,7 @@ import { deleteSession, putSession } from '../lib/db';
 import { formatDuration, relativeTime } from '../lib/format';
 import type { EngineMode, Session } from '../lib/types';
 import { useSession, useSessions } from '../lib/useSessions';
+import { getRuntimeConfig } from '../lib/remoteConfig';
 import { useEngine } from '../state/engine';
 import { useToast } from '../state/toast';
 
@@ -242,7 +243,7 @@ export default function SessionDetail() {
                 <div className="min-w-0 flex-1">
                   <p className="text-[14.5px] font-medium">Need more than a quick triage?</p>
                   <p className="mt-0.5 text-[13px] leading-relaxed text-ink-2">
-                    Deep analysis hands this problem to {cloudLabel()} for confirming tests, more detailed steps and what to tell a
+                    Deep analysis hands this problem to {cloudLabel(getRuntimeConfig().deepModel)} for confirming tests, more detailed steps and what to tell a
                     technician.
                   </p>
                 </div>

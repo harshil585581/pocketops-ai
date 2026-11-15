@@ -283,7 +283,8 @@ export default function Engine() {
             <p className="label">Firebase stack</p>
             <Spec k="AI Logic" v="Hybrid inference" ok={engine.cloudConfigured} />
             <Spec k="On-device" v={`${LOCAL_MODEL} · Chrome`} ok={local === 'available'} />
-            <Spec k="Cloud" v={runtime.cloudModel} ok={engine.cloudConfigured} />
+            <Spec k="Cloud (quick)" v={runtime.cloudModel} ok={engine.cloudConfigured} />
+            <Spec k="Cloud (deep)" v={runtime.deepModel} ok={engine.cloudConfigured} />
             <Spec k="App Check" v={appCheckConfigured ? 'reCAPTCHA Enterprise' : 'Not configured'} ok={appCheckConfigured} />
             <Spec k="Auth" v={sync.uid ? (sync.isAnonymous ? 'Anonymous' : 'Google') : 'Signed out'} ok={Boolean(sync.uid)} />
             <Spec k="Firestore" v={sync.status === 'synced' ? 'Synced' : sync.status} ok={sync.status === 'synced'} />

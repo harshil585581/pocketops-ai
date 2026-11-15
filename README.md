@@ -34,7 +34,7 @@ All AI requests go through `firebase/ai` — there is no other inference path.
 | Online, Nano not available | `PREFER_ON_DEVICE` → SDK falls back to cloud |
 | Online, long description (Remote Config threshold) | `PREFER_IN_CLOUD` |
 | Offline, Nano ready | `ONLY_ON_DEVICE` |
-| "Deep analysis" button | `ONLY_IN_CLOUD` |
+| "Deep analysis" button | `ONLY_IN_CLOUD` with the more capable `deep_model` (falls back to `cloud_model` if busy) |
 | User override: On-device only / Cloud only | `ONLY_ON_DEVICE` / `ONLY_IN_CLOUD` |
 | Offline, no Nano | No AI — related saved guides are shown |
 
@@ -45,7 +45,7 @@ All AI requests go through `firebase/ai` — there is no other inference path.
 | **App Check** | Protects AI Logic (and Firestore) from abuse — [`src/lib/firebaseApp.ts`](src/lib/firebaseApp.ts) |
 | **Authentication** | Anonymous sign-in by default; optional Google sign-in links the account for cross-device sync — [`src/lib/sync.ts`](src/lib/sync.ts) |
 | **Cloud Firestore** | Saved guides mirrored to `users/{uid}/sessions`, last-write-wins merge, offline queue — [`src/lib/sync.ts`](src/lib/sync.ts), [`firestore.rules`](firestore.rules) |
-| **Remote Config** | `cloud_model`, `long_problem_chars`, `system_instruction` change AI behaviour without a redeploy — [`src/lib/remoteConfig.ts`](src/lib/remoteConfig.ts), [`remoteconfig.template.json`](remoteconfig.template.json) |
+| **Remote Config** | `cloud_model`, `deep_model`, `long_problem_chars`, `system_instruction` change AI behaviour without a redeploy — [`src/lib/remoteConfig.ts`](src/lib/remoteConfig.ts), [`remoteconfig.template.json`](remoteconfig.template.json) |
 | **Hosting** | Serves the PWA — [`firebase.json`](firebase.json) |
 
 ## Features

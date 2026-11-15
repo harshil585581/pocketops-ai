@@ -12,7 +12,7 @@
 import type { InferenceMode } from 'firebase/ai';
 import type { CategoryId, EngineMode, InferenceSource, Session, Solution } from '../lib/types';
 import type { LocalAvailability } from './chromeAI';
-import { firebaseConfigured, generateWithFirebase } from './firebase';
+import { CloudBusyError, firebaseConfigured, generateWithFirebase } from './firebase';
 import { getRuntimeConfig } from '../lib/remoteConfig';
 import { buildPrompt, type Depth } from './prompt';
 import { parseSolution } from './parse';
@@ -43,8 +43,13 @@ export interface RouteOptions {
 
 export const LOCAL_MODEL = 'Gemini Nano';
 
+const QUICK_TIMEOUT_MS = 60_000;
+// If the capable model is slow under load, give up after 45 s and answer with the fast model instead.
+const DEEP_TIMEOUT_MS = 45_000;
+
 export function cloudLabel(id = getRuntimeConfig().cloudModel) {
   return id
+    .replace(/-latest$/, '')
     .replace(/^gemini-/, 'Gemini ')
     .replace(/-/g, ' ')
     .replace(/\b(flash|pro|lite)\b/gi, (w) => w[0].toUpperCase() + w.slice(1));
@@ -60,7 +65,9 @@ export function planRoute({ online, local, mode }: EngineSnapshot, opts: RouteOp
   const none = (reason: string): Route => ({ target: 'none', model: '', reason });
 
   if (opts.depth === 'deep') {
-    return online ? cloud('Deep analysis runs on cloud Gemini for more thorough reasoning.', 'only_in_cloud') : none('Deep analysis needs an internet connection.');
+    return online
+      ? { ...cloud('Deep analysis runs on the more capable cloud model.', 'only_in_cloud'), model: cloudLabel(getRuntimeConfig().deepModel) }
+      : none('Deep analysis needs an internet connection.');
   }
   if (mode === 'local-only') {
     return localReady
@@ -104,13 +111,17 @@ export async function runDiagnosis(
   const t0 = performance.now();
   const prompt = buildPrompt(problem, category, depth, getRuntimeConfig().systemInstruction);
 
-  const attempt = async (mode: InferenceMode): Promise<DiagnosisResult> => {
-    const r = await generateWithFirebase(prompt, mode, opts.signal);
+  const cfg = getRuntimeConfig();
+  const quick = { model: cfg.cloudModel, timeoutMs: QUICK_TIMEOUT_MS };
+  const deep = { model: cfg.deepModel, timeoutMs: DEEP_TIMEOUT_MS };
+
+  const attempt = async (mode: InferenceMode, cloud = depth === 'deep' ? deep : quick): Promise<DiagnosisResult> => {
+    const r = await generateWithFirebase(prompt, mode, cloud, opts.signal);
     return {
       solution: parseSolution(r.text),
       category,
       source: r.source,
-      model: r.source === 'on-device' ? LOCAL_MODEL : cloudLabel(),
+      model: r.source === 'on-device' ? LOCAL_MODEL : cloudLabel(cloud.model),
       durationMs: Math.round(performance.now() - t0),
       depth,
       inferenceMode: mode,
@@ -121,6 +132,8 @@ export async function runDiagnosis(
     return await attempt(route.inferenceMode);
   } catch (err) {
     if (opts.signal?.aborted) throw err;
+    // Deep model overloaded or too slow: still give a cloud answer with the fast model.
+    if (depth === 'deep' && err instanceof CloudBusyError && deep.model !== quick.model) return attempt('only_in_cloud', quick);
     // If the on-device answer couldn't be used (e.g. malformed JSON), retry in the cloud when allowed.
     const canRetryCloud = snap.online && snap.mode === 'auto' && route.inferenceMode !== 'only_in_cloud';
     if (canRetryCloud && err instanceof SyntaxError) return attempt('only_in_cloud');

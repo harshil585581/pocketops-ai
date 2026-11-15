@@ -1,8 +1,13 @@
 {
   "parameters": {
     "cloud_model": {
+      "defaultValue": { "value": "gemini-flash-lite-latest" },
+      "description": "Fast Gemini model for quick cloud answers (Firebase AI Logic).",
+      "valueType": "STRING"
+    },
+    "deep_model": {
       "defaultValue": { "value": "gemini-3.8-flash" },
-      "description": "Gemini model used by Firebase AI Logic for cloud inference.",
+      "description": "More capable Gemini model for Deep analysis; falls back to cloud_model when busy.",
       "valueType": "STRING"
     },
     "long_problem_chars": {

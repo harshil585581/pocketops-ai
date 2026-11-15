@@ -1,6 +1,7 @@
 /**
  * Firebase Remote Config — lets the AI setup be changed without redeploying:
- *   cloud_model          Gemini model used for cloud inference
+ *   cloud_model          fast Gemini model for quick cloud answers
+ *   deep_model           more capable Gemini model for Deep analysis
  *   long_problem_chars   descriptions at least this long are routed to the cloud first
  *   system_instruction   optional override for the troubleshooting instructions
  * Last-activated values are cached by the SDK, so they still apply offline.
@@ -10,17 +11,24 @@ import { firebaseConfigured, getFirebaseApp } from './firebaseApp';
 
 export interface RuntimeConfig {
   cloudModel: string;
+  deepModel: string;
   longProblemChars: number;
   systemInstruction: string;
   /** Where the values came from: built-in defaults or a fetched Remote Config template. */
   origin: 'default' | 'remote';
 }
 
-const DEFAULT_MODEL = (import.meta.env.VITE_GEMINI_MODEL as string | undefined) || 'gemini-3.8-flash';
-const DEFAULTS = { cloud_model: DEFAULT_MODEL, long_problem_chars: 600, system_instruction: '' };
+const env = import.meta.env;
+const DEFAULTS = {
+  cloud_model: (env.VITE_GEMINI_MODEL as string | undefined) || 'gemini-flash-lite-latest',
+  deep_model: (env.VITE_GEMINI_DEEP_MODEL as string | undefined) || 'gemini-3.8-flash',
+  long_problem_chars: 600,
+  system_instruction: '',
+};
 
 let current: RuntimeConfig = {
   cloudModel: DEFAULTS.cloud_model,
+  deepModel: DEFAULTS.deep_model,
   longProblemChars: DEFAULTS.long_problem_chars,
   systemInstruction: '',
   origin: 'default',
@@ -55,6 +63,7 @@ export async function initRemoteConfig() {
       const chars = rc.getNumber(remote, 'long_problem_chars');
       current = {
         cloudModel: model.asString() || DEFAULTS.cloud_model,
+        deepModel: rc.getString(remote, 'deep_model') || DEFAULTS.deep_model,
         longProblemChars: chars > 0 ? chars : DEFAULTS.long_problem_chars,
         systemInstruction: rc.getString(remote, 'system_instruction').trim(),
         origin: model.getSource() === 'remote' ? 'remote' : 'default',
