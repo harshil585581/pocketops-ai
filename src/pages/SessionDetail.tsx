@@ -192,7 +192,7 @@ export default function SessionDetail() {
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <SourceBadge source={session.source} model={session.model} />
             <SeverityBadge severity={sol.severity} />
-            <span className="inline-flex h-7 items-center gap-1.5 rounded-full bg-surface-2 px-2.5 text-xs text-ink-2">
+            <span className={cx('inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium', cat.tint)}>
               <CatIcon className="size-3.5" /> {cat.label}
             </span>
             {isDeep && (
@@ -287,7 +287,7 @@ export default function SessionDetail() {
 
         {sol.safety.length > 0 && (
           <motion.section variants={item} aria-labelledby="safety">
-            <div className="relative overflow-hidden rounded-2xl border border-warn/30 bg-warn/[0.06] p-5">
+            <div className="relative overflow-hidden rounded-2xl border border-amber-200 bg-amber-50/80 p-5 dark:border-warn/30 dark:bg-warn/[0.06]">
               <div className="absolute inset-y-0 left-0 w-1 bg-warn" />
               <h2 id="safety" className="flex items-center gap-2 text-[15px] font-semibold text-warn">
                 <ShieldAlert className="size-4.5" /> Before you start — safety
@@ -350,7 +350,7 @@ export default function SessionDetail() {
                         className={cx(
                           'relative mt-0.5 grid size-6 shrink-0 place-items-center rounded-full border-[1.5px] font-mono text-[11px] font-medium transition-all duration-300',
                           checked
-                            ? 'border-local bg-local text-[#04140d]'
+                            ? 'border-local bg-local text-on-local'
                             : 'border-line-strong text-ink-3 group-hover:border-ink-3 group-hover:text-ink',
                         )}
                       >

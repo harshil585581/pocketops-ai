@@ -47,9 +47,8 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
         e.preventDefault();
         if (ready) onSubmit();
       }}
-      className="card group relative overflow-hidden transition-[border-color,box-shadow] duration-300 focus-within:border-line-strong focus-within:shadow-pop"
+      className="card group relative overflow-hidden transition-[box-shadow] duration-300 focus-within:shadow-pop focus-within:ring-brand"
     >
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-local/50 to-transparent opacity-0 transition-opacity duration-500 group-focus-within:opacity-100" />
       <label htmlFor="problem" className="sr-only">
         Describe your problem
       </label>
@@ -92,7 +91,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
               onClick={() => onCategory(on ? 'auto' : c.id)}
               className={cx('chip shrink-0', on && '!border-ink !bg-ink !text-canvas')}
             >
-              <Icon className="size-3.5" /> {c.label}
+              <Icon className={cx('size-3.5', !on && c.tint.split(' ').filter((x) => x.startsWith('text-') || x.startsWith('dark:')).join(' '))} /> {c.label}
             </button>
           );
         })}
@@ -132,7 +131,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
         <button
           type="submit"
           disabled={!ready}
-          className="btn h-9 shrink-0 bg-local px-3.5 font-semibold text-[#04140d] shadow-[0_0_0_1px_rgb(0_0_0/0.05),0_6px_20px_-6px_var(--local)] hover:bg-local-hi disabled:bg-surface-3 disabled:text-ink-3 disabled:shadow-none"
+          className="btn-brand shrink-0"
         >
           {route.target === 'none' ? 'Search saved' : 'Diagnose'}
           <ArrowUp className="size-4" strokeWidth={2.4} />

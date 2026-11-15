@@ -93,7 +93,7 @@ export function LikelihoodMeter({ value }: { value: Likelihood }) {
     <span className="inline-flex items-center gap-2" title={`${value} likelihood`}>
       <span className="flex gap-0.5">
         {[1, 2, 3].map((i) => (
-          <span key={i} className={cx('h-1.5 w-3.5 rounded-full', i <= n ? 'bg-ink' : 'bg-line-strong')} />
+          <span key={i} className={cx('h-1.5 w-3.5 rounded-full', i <= n ? 'bg-ink-2' : 'bg-line-strong')} />
         ))}
       </span>
       <span className="label !tracking-[0.06em]">{value}</span>

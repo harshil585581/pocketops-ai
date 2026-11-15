@@ -76,7 +76,7 @@ export function Sidebar() {
   const { canInstall, install } = usePwa();
   const { sessions } = useSessions();
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-line bg-canvas/70 px-3 py-4 backdrop-blur-xl lg:flex">
+    <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-line bg-surface/75 px-3 py-4 backdrop-blur-xl lg:flex">
       <div className="flex items-center gap-2.5 px-2 pb-6">
         <Logo className="size-8" />
         <div className="leading-tight">

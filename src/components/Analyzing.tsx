@@ -75,7 +75,7 @@ export function Analyzing({ problem, route, onCancel }: { problem: string; route
                   <span
                     className={cx(
                       'grid size-5 place-items-center rounded-full border transition-colors',
-                      done ? 'border-local bg-local text-[#04140d]' : active ? 'border-local/50 text-local' : 'border-line-strong text-ink-3',
+                      done ? 'border-local bg-local text-on-local' : active ? 'border-local/50 text-local' : 'border-line-strong text-ink-3',
                     )}
                   >
                     {done ? <Check className="size-3" strokeWidth={3} /> : active ? <Loader2 className="size-3 animate-spin" /> : null}

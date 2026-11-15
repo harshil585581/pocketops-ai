@@ -6,24 +6,28 @@
 
 /* ───────────────────────── Design tokens ───────────────────────── */
 :root {
-  --canvas: #f6f6f3;
+  --canvas: #f6f8fb;
   --surface: #ffffff;
-  --surface-2: #f0f0ec;
-  --surface-3: #e8e8e3;
-  --line: #e4e4df;
-  --line-strong: #d2d2cb;
-  --ink: #0e1116;
-  --ink-2: #4a4f57;
-  --ink-3: #8a8f96;
-  --local: #0c9466;
-  --local-hi: #12b07b;
-  --cloud: #4f5bd5;
-  --warn: #b26b00;
-  --danger: #d03b3b;
-  --grid: rgb(14 17 22 / 0.045);
-  --glow: rgb(18 176 123 / 0.1);
-  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.7) inset, 0 1px 2px rgb(14 17 22 / 0.04), 0 4px 16px -6px rgb(14 17 22 / 0.08);
-  --shadow-pop: 0 12px 40px -12px rgb(14 17 22 / 0.25), 0 2px 6px rgb(14 17 22 / 0.06);
+  --surface-2: #f2f5f9;
+  --surface-3: #e8edf3;
+  --line: #e3e8ef;
+  --line-strong: #cfd7e2;
+  --ink: #0b1324;
+  --ink-2: #475569;
+  --ink-3: #8592a6;
+  --local: #059669;
+  --local-hi: #10b981;
+  --on-local: #ffffff;
+  --cloud: #4f46e5;
+  --warn: #b45309;
+  --danger: #dc2626;
+  --grid: rgb(11 19 36 / 0.05);
+  --glow: rgb(16 185 129 / 0.16);
+  --glow-2: rgb(99 102 241 / 0.14);
+  --glow-3: rgb(56 189 248 / 0.12);
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 2px 6px -1px rgb(15 23 42 / 0.05), 0 0 0 1px rgb(255 255 255 / 0.6) inset;
+  --shadow-lift: 0 2px 4px rgb(15 23 42 / 0.04), 0 12px 28px -8px rgb(15 23 42 / 0.12);
+  --shadow-pop: 0 16px 48px -12px rgb(15 23 42 / 0.22), 0 4px 10px -2px rgb(15 23 42 / 0.06);
   color-scheme: light;
 }
 
@@ -39,11 +43,15 @@
   --ink-3: #6b717a;
   --local: #3be0a0;
   --local-hi: #5bf0b4;
+  --on-local: #04140d;
   --cloud: #8b9bff;
   --warn: #f5b544;
   --danger: #ff6b6b;
   --grid: rgb(255 255 255 / 0.035);
   --glow: rgb(59 224 160 / 0.09);
+  --glow-2: rgb(139 155 255 / 0.07);
+  --glow-3: rgb(56 189 248 / 0.04);
+  --shadow-lift: 0 1px 2px rgb(0 0 0 / 0.4), 0 16px 32px -12px rgb(0 0 0 / 0.7);
   --shadow-card: 0 1px 0 rgb(255 255 255 / 0.035) inset, 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.6);
   --shadow-pop: 0 20px 50px -12px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.04);
   color-scheme: dark;
@@ -64,11 +72,13 @@
   --color-ink-3: var(--ink-3);
   --color-local: var(--local);
   --color-local-hi: var(--local-hi);
+  --color-on-local: var(--on-local);
   --color-cloud: var(--cloud);
   --color-warn: var(--warn);
   --color-danger: var(--danger);
 
   --shadow-card: var(--shadow-card);
+  --shadow-lift: var(--shadow-lift);
   --shadow-pop: var(--shadow-pop);
 
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
@@ -126,6 +136,42 @@
 @utility btn-ghost {
   @apply btn h-9 px-3 text-ink-2 hover:bg-surface-2 hover:text-ink;
 }
+/* Hybrid brand gradient: emerald (on-device) → indigo (cloud). */
+@utility text-brand {
+  background: linear-gradient(100deg, var(--local) 10%, var(--cloud) 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+@utility btn-brand {
+  @apply btn h-9 px-4 font-semibold text-on-local;
+  background: linear-gradient(180deg, var(--local-hi), var(--local));
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.25) inset, 0 6px 18px -6px color-mix(in oklab, var(--local) 70%, transparent);
+  &:hover {
+    filter: brightness(1.05);
+  }
+  &:disabled {
+    background: var(--surface-3);
+    color: var(--ink-3);
+    box-shadow: none;
+    filter: none;
+  }
+}
+/* Gradient hairline that appears when the composer is focused. */
+@utility ring-brand {
+  border-color: transparent;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    linear-gradient(120deg, color-mix(in oklab, var(--local) 70%, transparent), color-mix(in oklab, var(--cloud) 70%, transparent)) border-box;
+}
+@utility card-hover {
+  @apply transition duration-200;
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lift);
+    border-color: var(--line-strong);
+  }
+}
 @utility chip {
   @apply inline-flex h-8 items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-[13px] text-ink-2 transition duration-200 hover:border-line-strong hover:text-ink;
 }
@@ -137,8 +183,9 @@
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(60rem 30rem at 70% -10%, var(--glow), transparent 70%),
-    radial-gradient(40rem 24rem at -10% 10%, color-mix(in oklab, var(--cloud) 6%, transparent), transparent 70%);
+    radial-gradient(52rem 26rem at 78% -8%, var(--glow), transparent 70%),
+    radial-gradient(44rem 24rem at 30% -14%, var(--glow-2), transparent 70%),
+    radial-gradient(36rem 22rem at 100% 30%, var(--glow-3), transparent 70%);
 }
 .app-backdrop::after {
   content: '';
@@ -146,7 +193,7 @@
   inset: 0;
   background-image: radial-gradient(var(--grid) 1px, transparent 1px);
   background-size: 22px 22px;
-  mask-image: linear-gradient(to bottom, black, transparent 70%);
+  mask-image: radial-gradient(70rem 36rem at 60% 0%, black, transparent 75%);
 }
 
 /* Signal pulse used by live status dots */

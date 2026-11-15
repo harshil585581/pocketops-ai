@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 export type ThemePref = 'system' | 'light' | 'dark';
 const KEY = 'pocketops:theme';
 
-const Ctx = createContext<{ theme: ThemePref; setTheme(t: ThemePref): void }>({ theme: 'dark', setTheme() {} });
+const Ctx = createContext<{ theme: ThemePref; setTheme(t: ThemePref): void }>({ theme: 'light', setTheme() {} });
 
 function read(): ThemePref {
   try {
@@ -12,7 +12,7 @@ function read(): ThemePref {
   } catch {
     /* ignore */
   }
-  return 'dark';
+  return 'light';
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
@@ -23,7 +23,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const apply = () => {
       const dark = theme === 'dark' || (theme === 'system' && mq.matches);
       document.documentElement.classList.toggle('dark', dark);
-      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#0A0B0D' : '#F6F6F3');
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#0A0B0D' : '#F6F8FB');
     };
     apply();
     mq.addEventListener('change', apply);

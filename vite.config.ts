@@ -16,8 +16,8 @@ export default defineConfig({
         short_name: 'PocketOps',
         description:
           'Offline-first AI troubleshooting. Describe a problem and get causes, steps and safety guidance — on-device or in the cloud.',
-        theme_color: '#0A0B0D',
-        background_color: '#0A0B0D',
+        theme_color: '#F6F8FB',
+        background_color: '#F6F8FB',
         display: 'standalone',
         display_override: ['window-controls-overlay', 'standalone'],
         orientation: 'any',

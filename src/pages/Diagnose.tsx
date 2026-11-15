@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { ArrowRight, ArrowUpRight, ShieldCheck, Wifi, WifiOff } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Cloud, Cpu, ShieldCheck, Wifi, WifiOff } from 'lucide-react';
 import { Composer, type ComposerHandle } from '../components/Composer';
 import { Analyzing } from '../components/Analyzing';
 import { ErrorPanel, OfflineFallback } from '../components/Fallback';
@@ -115,12 +115,23 @@ export default function Diagnose() {
             </span>
           </div>
           <h1 className="text-[34px] leading-[1.05] font-semibold tracking-[-0.035em] text-balance sm:text-[44px]">
-            What’s going wrong?
+            What’s going <span className="text-brand">wrong?</span>
           </h1>
           <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-pretty text-ink-2 sm:text-base">
             Describe the problem in your own words. PocketOps finds likely causes, walks you through the fix step by step,
             and flags safety risks — even without a connection.
           </p>
+          <ul className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-[13px] font-medium text-ink-2">
+            <li className="flex items-center gap-1.5">
+              <WifiOff className="size-3.5 text-local" /> Works offline
+            </li>
+            <li className="flex items-center gap-1.5">
+              <Cpu className="size-3.5 text-local" /> Private on-device AI
+            </li>
+            <li className="flex items-center gap-1.5">
+              <Cloud className="size-3.5 text-cloud" /> Cloud Gemini when it helps
+            </li>
+          </ul>
         </motion.header>
 
         <AnimatePresence mode="wait" initial={false}>
@@ -164,9 +175,9 @@ export default function Diagnose() {
                           setCategory(ex.category);
                           composer.current?.focus();
                         }}
-                        className="group card flex items-start gap-3 p-3.5 text-left transition duration-200 hover:-translate-y-px hover:border-line-strong"
+                        className="group card card-hover flex items-start gap-3 p-3.5 text-left"
                       >
-                        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-surface-2 text-ink-2 transition group-hover:text-local">
+                        <span className={cx('grid size-9 shrink-0 place-items-center rounded-xl', cat.tint)}>
                           <Icon className="size-4" strokeWidth={1.8} />
                         </span>
                         <span className="flex-1 text-[13.5px] leading-snug text-ink-2 transition group-hover:text-ink">{ex.text}</span>

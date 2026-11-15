@@ -16,11 +16,11 @@ export function SessionCard({ s, dense }: { s: Session; dense?: boolean }) {
     <Link
       to={`/s/${s.id}`}
       className={cx(
-        'group card flex items-center gap-3.5 transition duration-200 hover:-translate-y-px hover:border-line-strong',
+        'group card card-hover flex items-center gap-3.5',
         dense ? 'p-3' : 'p-4',
       )}
     >
-      <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-line bg-surface-2 text-ink-2">
+      <span className={cx('grid size-10 shrink-0 place-items-center rounded-xl', cat.tint)}>
         <Icon className="size-[18px]" strokeWidth={1.8} />
       </span>
       <div className="min-w-0 flex-1">
