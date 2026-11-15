@@ -1,0 +1,25 @@
+rules_version = '2';
+
+// Each signed-in user (anonymous or Google) can only read and write their own saved guides.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/sessions/{sessionId} {
+      function isOwner() {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      function isValidSession() {
+        let d = request.resource.data;
+        return d.keys().hasAll(['id', 'problem', 'solution', 'source', 'createdAt', 'updatedAt'])
+          && d.id == sessionId
+          && d.problem is string && d.problem.size() <= 4000
+          && d.solution is map
+          && d.source in ['on-device', 'cloud']
+          && d.updatedAt is number;
+      }
+
+      allow read, delete: if isOwner();
+      allow create, update: if isOwner() && isValidSession();
+    }
+  }
+}

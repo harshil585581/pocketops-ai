@@ -1,0 +1,19 @@
+{
+  "parameters": {
+    "cloud_model": {
+      "defaultValue": { "value": "gemini-3.8-flash" },
+      "description": "Gemini model used by Firebase AI Logic for cloud inference.",
+      "valueType": "STRING"
+    },
+    "long_problem_chars": {
+      "defaultValue": { "value": "600" },
+      "description": "Descriptions at least this long are routed to the cloud first (PREFER_IN_CLOUD).",
+      "valueType": "NUMBER"
+    },
+    "system_instruction": {
+      "defaultValue": { "value": "" },
+      "description": "Optional override for the troubleshooting instructions. Empty = built-in prompt.",
+      "valueType": "STRING"
+    }
+  }
+}

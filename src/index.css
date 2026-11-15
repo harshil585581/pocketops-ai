@@ -1,0 +1,204 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ───────────────────────── Design tokens ───────────────────────── */
+:root {
+  --canvas: #f6f6f3;
+  --surface: #ffffff;
+  --surface-2: #f0f0ec;
+  --surface-3: #e8e8e3;
+  --line: #e4e4df;
+  --line-strong: #d2d2cb;
+  --ink: #0e1116;
+  --ink-2: #4a4f57;
+  --ink-3: #8a8f96;
+  --local: #0c9466;
+  --local-hi: #12b07b;
+  --cloud: #4f5bd5;
+  --warn: #b26b00;
+  --danger: #d03b3b;
+  --grid: rgb(14 17 22 / 0.045);
+  --glow: rgb(18 176 123 / 0.1);
+  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.7) inset, 0 1px 2px rgb(14 17 22 / 0.04), 0 4px 16px -6px rgb(14 17 22 / 0.08);
+  --shadow-pop: 0 12px 40px -12px rgb(14 17 22 / 0.25), 0 2px 6px rgb(14 17 22 / 0.06);
+  color-scheme: light;
+}
+
+.dark {
+  --canvas: #0a0b0d;
+  --surface: #111316;
+  --surface-2: #171a1e;
+  --surface-3: #1e2227;
+  --line: #22262b;
+  --line-strong: #2f343b;
+  --ink: #edeef0;
+  --ink-2: #a4a9b1;
+  --ink-3: #6b717a;
+  --local: #3be0a0;
+  --local-hi: #5bf0b4;
+  --cloud: #8b9bff;
+  --warn: #f5b544;
+  --danger: #ff6b6b;
+  --grid: rgb(255 255 255 / 0.035);
+  --glow: rgb(59 224 160 / 0.09);
+  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.035) inset, 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.6);
+  --shadow-pop: 0 20px 50px -12px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.04);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-local: var(--local);
+  --color-local-hi: var(--local-hi);
+  --color-cloud: var(--cloud);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+
+  --shadow-card: var(--shadow-card);
+  --shadow-pop: var(--shadow-pop);
+
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* ───────────────────────── Base ───────────────────────── */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-canvas font-sans text-ink antialiased;
+    font-feature-settings: 'ss01', 'cv11';
+    overscroll-behavior-y: none;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--local) 30%, transparent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--local);
+    outline-offset: 2px;
+    border-radius: 8px;
+  }
+  button {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+}
+
+/* ───────────────────────── Components ───────────────────────── */
+@utility card {
+  @apply rounded-2xl border border-line bg-surface shadow-card;
+}
+@utility glass {
+  background: color-mix(in oklab, var(--surface) 82%, transparent);
+  backdrop-filter: saturate(1.6) blur(18px);
+  -webkit-backdrop-filter: saturate(1.6) blur(18px);
+}
+@utility label {
+  @apply font-mono text-[11px] font-medium tracking-[0.08em] text-ink-3 uppercase;
+}
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl text-sm font-medium transition duration-200 select-none active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100;
+}
+@utility btn-primary {
+  @apply btn h-10 bg-ink px-4 text-canvas hover:opacity-90;
+}
+@utility btn-secondary {
+  @apply btn h-10 border border-line bg-surface px-4 text-ink hover:border-line-strong hover:bg-surface-2;
+}
+@utility btn-ghost {
+  @apply btn h-9 px-3 text-ink-2 hover:bg-surface-2 hover:text-ink;
+}
+@utility chip {
+  @apply inline-flex h-8 items-center gap-1.5 rounded-full border border-line bg-surface px-3 text-[13px] text-ink-2 transition duration-200 hover:border-line-strong hover:text-ink;
+}
+
+/* ───────────────────────── Backdrop ───────────────────────── */
+.app-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(60rem 30rem at 70% -10%, var(--glow), transparent 70%),
+    radial-gradient(40rem 24rem at -10% 10%, color-mix(in oklab, var(--cloud) 6%, transparent), transparent 70%);
+}
+.app-backdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(var(--grid) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: linear-gradient(to bottom, black, transparent 70%);
+}
+
+/* Signal pulse used by live status dots */
+@keyframes signal {
+  0% { transform: scale(1); opacity: 0.55; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+.pulse-dot {
+  position: relative;
+}
+.pulse-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: signal 2s var(--ease-out-quart) infinite;
+}
+
+/* Scan line for the analyzing state */
+@keyframes scan {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+.scan {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--local) 22%, transparent), transparent);
+  animation: scan 1.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes shimmer {
+  100% { background-position: -200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-2) 0%, var(--surface-3) 50%, var(--surface-2) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+  border-radius: 8px;
+}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+.safe-top { padding-top: env(safe-area-inset-top); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
