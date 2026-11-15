@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, useLocation, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { BookMarked, CheckCircle2, Cloud, Cpu, Download, Gauge, Menu, Plus, Search, X } from 'lucide-react';
+import { BookMarked, CheckCircle2, Cloud, Cpu, Download, Menu, Plus, Search, Settings, X } from 'lucide-react';
 import { useEngine } from '../state/engine';
 import { usePwa } from '../state/pwa';
 import { Logo, StatusDot, cx } from './ui';
@@ -12,7 +12,7 @@ import { dayGroup } from '../lib/format';
 import type { Session } from '../lib/types';
 
 /** Compact live status: where the next request will run, plus Nano and sync state. */
-export function EngineStatus({ compact, static: isStatic }: { compact?: boolean; /** Render without the link (used on the Engine page itself). */ static?: boolean }) {
+export function EngineStatus({ compact, static: isStatic }: { compact?: boolean; /** Render without the link (used on the Settings page itself). */ static?: boolean }) {
   const { online, local, route } = useEngine();
   const sync = useSync();
   const routeTone = route.target === 'on-device' ? 'local' : route.target === 'cloud' ? 'cloud' : 'danger';
@@ -59,7 +59,7 @@ export function EngineStatus({ compact, static: isStatic }: { compact?: boolean;
   return isStatic ? (
     <div className="card p-4">{body}</div>
   ) : (
-    <NavLink to="/engine" className="group block rounded-xl border border-line bg-surface-2/60 p-3 transition hover:border-line-strong">
+    <NavLink to="/settings" className="group block rounded-xl border border-line bg-surface-2/60 p-3 transition hover:border-line-strong">
       {body}
     </NavLink>
   );
@@ -176,15 +176,14 @@ function SidebarContent({ onNavigate }: { onNavigate?(): void }) {
             <BookMarked className="size-4" /> All guides
           </NavLink>
           <NavLink
-            to="/engine"
+            to="/settings"
             className={({ isActive }) =>
               cx('flex h-9 items-center gap-2 rounded-lg px-2.5 text-[13px] font-medium transition', isActive ? 'bg-surface text-ink shadow-card' : 'text-ink-2 hover:bg-surface-2')
             }
           >
-            <Gauge className="size-4" /> Engine
+            <Settings className="size-4" /> Settings
           </NavLink>
         </div>
-        <EngineStatus />
         {canInstall && (
           <button onClick={install} className="btn-secondary h-9 w-full text-[13px]">
             <Download className="size-4" /> Install app
@@ -225,7 +224,7 @@ export function MobileHeader() {
             <Logo className="size-7" />
             <span className="text-[15px] font-semibold tracking-tight">PocketOps</span>
           </Link>
-          <NavLink to="/engine" aria-label="Engine status">
+          <NavLink to="/settings" aria-label="AI status and settings">
             <EngineStatus compact />
           </NavLink>
           <Link to="/" aria-label="New diagnosis" className="btn-brand size-9 !rounded-lg !px-0">

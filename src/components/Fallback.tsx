@@ -38,7 +38,7 @@ export function OfflineFallback({ problem, reason, onBack }: { problem: string; 
           <button onClick={onBack} className="btn-ghost h-8 text-[13px]">
             <ArrowLeft className="size-3.5" /> Edit description
           </button>
-          <Link to="/engine" className="btn-ghost h-8 text-[13px]">
+          <Link to="/settings" className="btn-ghost h-8 text-[13px]">
             <Cpu className="size-3.5" /> Set up on-device AI
           </Link>
         </div>

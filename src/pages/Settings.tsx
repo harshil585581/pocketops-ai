@@ -47,7 +47,7 @@ const LOCAL_LABEL = {
   unsupported: 'Not available in this browser',
 } as const;
 
-export default function Engine() {
+export default function Settings() {
   const engine = useEngine();
   const { theme, setTheme } = useTheme();
   const pwa = usePwa();
@@ -73,9 +73,9 @@ export default function Engine() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-10 lg:py-12">
       <header className="mb-8">
-        <h1 className="text-[28px] font-semibold tracking-[-0.03em] sm:text-[34px]">Engine</h1>
+        <h1 className="text-[28px] font-semibold tracking-[-0.03em] sm:text-[34px]">Settings</h1>
         <p className="mt-1.5 max-w-xl text-[14.5px] text-ink-2">
-          Where your requests run, how to prepare the on-device model, and how PocketOps works offline.
+          AI engine, on-device setup, sync and app preferences.
         </p>
       </header>
 
@@ -281,7 +281,7 @@ export default function Engine() {
                   {pwa.offlineReady ? 'Cached' : import.meta.env.DEV ? 'Disabled in dev' : 'Preparing'}
                 </span>
               </Row>
-              <Row label="Saved guidance" hint={`${sessions.length} guide${sessions.length === 1 ? '' : 's'} stored in IndexedDB on this device.`}>
+              <Row label="Saved conversations" hint={`${sessions.length} conversation${sessions.length === 1 ? '' : 's'} stored on this device.`}>
                 <button
                   onClick={() => setConfirmClear(true)}
                   disabled={!sessions.length}
@@ -304,14 +304,14 @@ export default function Engine() {
 
       <ConfirmDialog
         open={confirmClear}
-        title="Clear all saved guidance?"
-        body={`This permanently removes ${sessions.length} guide${sessions.length === 1 ? '' : 's'} from this device. It can’t be undone.`}
+        title="Clear all saved conversations?"
+        body={`This permanently removes ${sessions.length} conversation${sessions.length === 1 ? '' : 's'} from this device. It can’t be undone.`}
         confirmLabel="Clear all"
         destructive
         onClose={() => setConfirmClear(false)}
         onConfirm={async () => {
           await clearSessions();
-          push({ tone: 'info', title: 'Saved guidance cleared' });
+          push({ tone: 'info', title: 'Saved conversations cleared' });
         }}
       />
     </div>

@@ -13,7 +13,7 @@ import Diagnose from './pages/Diagnose';
 
 const History = lazy(() => import('./pages/History'));
 const Thread = lazy(() => import('./pages/Thread'));
-const Engine = lazy(() => import('./pages/Engine'));
+const Settings = lazy(() => import('./pages/Settings'));
 
 function ConnectivityToasts() {
   const { online, local } = useEngine();
@@ -29,7 +29,7 @@ function ConnectivityToasts() {
         : {
             tone: 'info',
             title: 'You’re offline',
-            body: local === 'available' ? 'Gemini Nano will keep working on-device.' : 'Saved guidance is still available.',
+            body: local === 'available' ? 'Gemini Nano will keep working on-device.' : 'Your saved conversations are still available.',
           },
     );
   }, [online]);
@@ -52,7 +52,8 @@ function AnimatedRoutes() {
             <Route path="/" element={<Diagnose />} />
             <Route path="/saved" element={<History />} />
             <Route path="/s/:id" element={<Thread />} />
-            <Route path="/engine" element={<Engine />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/engine" element={<Navigate to="/settings" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

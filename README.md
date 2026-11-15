@@ -57,7 +57,7 @@ All AI requests go through `firebase/ai` — there is no other inference path.
 - **Deep analysis**: hand the problem to the more capable cloud model inside the same thread
 - Source label on every answer (`Generated locally · Gemini Nano` / `Generated in cloud · Gemini Flash`)
 - Saved guides in IndexedDB, searchable and filterable, available offline, synced via Firestore
-- Engine screen: live network, model and cloud status; Gemini Nano download with progress; routing preference
+- Settings page: live network, model and cloud status; Gemini Nano download with progress; routing preference
 - Installable PWA, offline app shell, light and dark themes, responsive from phone to desktop
 
 ## Run locally
@@ -91,7 +91,7 @@ Production build with the service worker: `npm run build && npm run preview`.
 
 ## On-device model (Gemini Nano)
 
-Chrome manages the model; nothing is bundled with the app. Open **Engine → Prepare on-device AI** and click
+Chrome manages the model; nothing is bundled with the app. Open **Settings → On-device AI** and click
 **Download model** while online. Hardware and Chrome requirements apply; when Nano isn't available the app
 uses cloud Gemini automatically.
 
@@ -103,7 +103,7 @@ src/
   lib/         firebaseApp.ts (App Check), sync.ts (Auth + Firestore), remoteConfig.ts, db.ts (IndexedDB), samples.ts
   state/       engine status, theme, toasts, PWA install/update
   components/  shell, composer, analyzing state, routing table, sync card, dialogs
-  pages/       Diagnose, SessionDetail (guide), History (saved), Engine
+  pages/       Diagnose, Thread (conversation), History (all guides), Settings
 ```
 
 Three hand-written example guides are seeded on first launch so the offline fallback has content. They are
