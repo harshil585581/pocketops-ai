@@ -25,22 +25,31 @@ export function EngineStatus({ compact }: { compact?: boolean }) {
       </span>
     );
   }
+  const nanoTone = local === 'available' ? 'local' : local === 'downloading' ? 'warn' : 'muted';
+  const syncTone = sync.status === 'synced' ? 'local' : sync.status === 'error' ? 'danger' : sync.status === 'disabled' ? 'muted' : 'warn';
+  const rows: [string, 'local' | 'cloud' | 'warn' | 'danger' | 'muted', string, boolean?][] = [
+    ['Network', online ? 'local' : 'danger', online ? 'Online' : 'Offline'],
+    ['Gemini Nano', nanoTone, local === 'available' ? 'Ready' : local === 'downloading' ? 'Downloading' : local === 'downloadable' ? 'Not downloaded' : 'Unavailable'],
+    ['Sync', syncTone, { disabled: 'Off', connecting: 'Connecting', syncing: 'Syncing', synced: 'Synced', offline: 'Queued', error: 'Error' }[sync.status]],
+    ['Routing to', routeTone, route.target === 'none' ? 'Unavailable' : routeLabel, true],
+  ];
   return (
-    <NavLink
-      to="/engine"
-      className="group flex items-center gap-3 rounded-xl border border-line bg-surface-2/60 px-3 py-2.5 text-[12.5px] transition hover:border-line-strong"
-    >
-      <span className="flex items-center gap-1.5 font-medium text-ink" title="Where your next question will run">
-        <StatusDot tone={routeTone} pulse={route.target !== 'none'} />
-        {route.target === 'none' ? 'AI offline' : `Next: ${routeLabel}`}
-      </span>
-      <span className="flex items-center gap-1 text-ink-2" title={online ? 'Online' : 'Offline'}>
-        <StatusDot tone={local === 'available' ? 'local' : 'muted'} /> Nano {local === 'available' ? 'ready' : 'off'}
-      </span>
-      <span className="ml-auto flex items-center gap-1 text-ink-3" title={`Sync: ${sync.status}`}>
-        <StatusDot tone={sync.status === 'synced' ? 'local' : sync.status === 'error' ? 'danger' : sync.status === 'disabled' ? 'muted' : 'warn'} />
-        Sync
-      </span>
+    <NavLink to="/engine" className="group block rounded-xl border border-line bg-surface-2/60 p-3 transition hover:border-line-strong">
+      <div className="mb-2.5 flex items-center justify-between">
+        <span className="label">Engine</span>
+        <span className="text-[11px] text-ink-3 transition group-hover:text-ink-2">Details →</span>
+      </div>
+      <ul className="space-y-1.5 text-[13px]">
+        {rows.map(([label, tone, value, pulse]) => (
+          <li key={label} className="flex items-center justify-between">
+            <span className="text-ink-2">{label}</span>
+            <span className={cx('flex items-center gap-1.5 font-medium', tone === 'danger' && label === 'Routing to' && 'text-danger')}>
+              <StatusDot tone={tone} pulse={pulse && route.target !== 'none'} />
+              {value}
+            </span>
+          </li>
+        ))}
+      </ul>
     </NavLink>
   );
 }

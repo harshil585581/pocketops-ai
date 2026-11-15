@@ -6,7 +6,6 @@ import {
   Cloud,
   Cpu,
   Download,
-  HardDrive,
   Laptop,
   Loader2,
   Monitor,
@@ -25,9 +24,6 @@ import { Segmented, StatusDot, cx } from '../components/ui';
 import { cloudLabel, LOCAL_MODEL } from '../engine';
 import { browserInfo, promptApiExposed } from '../engine/chromeAI';
 import { SyncCard } from '../components/SyncCard';
-import { appCheckConfigured } from '../lib/firebaseApp';
-import { useRuntimeConfig } from '../lib/remoteConfig';
-import { useSync } from '../lib/sync';
 import { clearSessions } from '../lib/db';
 import type { EngineMode } from '../lib/types';
 import { useSessions } from '../lib/useSessions';
@@ -58,8 +54,6 @@ export default function Engine() {
   const { sessions } = useSessions();
   const [confirmClear, setConfirmClear] = useState(false);
   const info = browserInfo();
-  const runtime = useRuntimeConfig();
-  const sync = useSync();
   const { local, online, downloadProgress } = engine;
 
   const localTone = local === 'available' ? 'local' : local === 'downloading' || local === 'downloadable' ? 'warn' : 'muted';
@@ -158,7 +152,22 @@ export default function Engine() {
           </Section>
 
           {/* Model setup */}
-          <Section title="Prepare on-device AI" desc="Gemini Nano is managed by Chrome. Download it once while online, then use it anywhere.">
+          <Section title="On-device AI" desc="Gemini Nano is managed by Chrome. Download it once while online, then use it anywhere.">
+            {local === 'available' && downloadProgress === null ? (
+              <div className="card flex flex-wrap items-center gap-3 p-4">
+                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-local/12 text-local">
+                  <Check className="size-4.5" strokeWidth={2.5} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[14px] font-medium">Gemini Nano is ready</p>
+                  <p className="text-[12.5px] text-ink-3">Diagnoses and follow-ups work on this device, even without internet.</p>
+                </div>
+                <button onClick={engine.refresh} className="btn-ghost h-8 text-[13px]">
+                  <RefreshCw className={cx('size-3.5', engine.checking && 'animate-spin')} /> Re-check
+                </button>
+              </div>
+            ) : (
+            <>
             <div className="card overflow-hidden">
               <ul className="divide-y divide-line">
                 {requirements.map((r) => (
@@ -218,6 +227,8 @@ export default function Engine() {
             <button onClick={engine.refresh} className="btn-ghost mt-2 h-8 text-[13px]">
               <RefreshCw className={cx('size-3.5', engine.checking && 'animate-spin')} /> Re-check availability
             </button>
+            </>
+            )}
           </Section>
 
           {/* Sync */}
@@ -279,19 +290,6 @@ export default function Engine() {
 
         <aside className="space-y-4">
           <RoutingMatrix />
-          <div className="card space-y-3 p-4 text-[12.5px]">
-            <p className="label">Firebase stack</p>
-            <Spec k="AI Logic" v="Hybrid inference" ok={engine.cloudConfigured} />
-            <Spec k="On-device" v={`${LOCAL_MODEL} · Chrome`} ok={local === 'available'} />
-            <Spec k="Cloud (quick)" v={runtime.cloudModel} ok={engine.cloudConfigured} />
-            <Spec k="Cloud (deep)" v={runtime.deepModel} ok={engine.cloudConfigured} />
-            <Spec k="App Check" v={appCheckConfigured ? 'reCAPTCHA Enterprise' : 'Not configured'} ok={appCheckConfigured} />
-            <Spec k="Auth" v={sync.uid ? (sync.isAnonymous ? 'Anonymous' : 'Google') : 'Signed out'} ok={Boolean(sync.uid)} />
-            <Spec k="Firestore" v={sync.status === 'synced' ? 'Synced' : sync.status} ok={sync.status === 'synced'} />
-            <Spec k="Remote Config" v={runtime.origin === 'remote' ? 'Live template' : 'Defaults'} ok={runtime.origin === 'remote'} />
-            <Spec k="Storage" v="IndexedDB" icon={<HardDrive className="size-3" />} ok />
-            <Spec k="Offline" v="Service worker" ok={pwa.offlineReady} />
-          </div>
         </aside>
       </div>
 
@@ -364,21 +362,6 @@ function Row({ label, hint, children }: { label: string; hint: string; children:
         <p className="mt-0.5 text-[12.5px] text-ink-3">{hint}</p>
       </div>
       <div className="shrink-0">{children}</div>
-    </div>
-  );
-}
-
-function Spec({ k, v, icon, ok }: { k: string; v: string; icon?: ReactNode; ok?: boolean }) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="flex items-center gap-1.5 text-ink-3">
-        {icon}
-        {k}
-      </span>
-      <span className="flex min-w-0 items-center gap-1.5">
-        <span className="truncate font-mono text-[11.5px] text-ink-2">{v}</span>
-        <StatusDot tone={ok ? 'local' : 'muted'} />
-      </span>
     </div>
   );
 }
