@@ -125,8 +125,6 @@ export default function Thread() {
   const snap = { online: engine.online, local: engine.local, mode: engine.mode };
   const composerRoute = planRoute(snap, { problemLength: draft.trim().length });
   const hasDeep = turns.some((t) => t.role === 'assistant' && t.kind === 'guide' && t.depth === 'deep');
-  const allSteps = sol.steps.length + turns.reduce((n, t) => n + (t.role === 'assistant' ? (t.kind === 'reply' ? t.reply.steps.length : t.solution.steps.length) : 0), 0);
-  const doneSteps = session.completedSteps.length + turns.reduce((n, t) => n + (t.role === 'assistant' ? t.completedSteps.length : 0), 0);
 
   // ── Persistence helpers (always re-read so concurrent edits aren't lost) ──
   const update = (fn: (s: Session) => Session) => updateSession(session.id, fn);
@@ -287,10 +285,6 @@ export default function Thread() {
               ) : (
                 <span>Open</span>
               )}
-              <span>·</span>
-              <span className="font-mono">
-                {doneSteps}/{allSteps} steps
-              </span>
               {session.sample && (
                 <>
                   <span>·</span>

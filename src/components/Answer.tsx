@@ -37,12 +37,6 @@ function Heading({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   );
 }
 
-const LIKELY: Record<Cause['likelihood'], { label: string; cls: string }> = {
-  high: { label: 'Most likely', cls: 'bg-local/10 text-local' },
-  medium: { label: 'Possible', cls: 'bg-amber-500/12 text-amber-700 dark:text-amber-300' },
-  low: { label: 'Less likely', cls: 'bg-surface-3 text-ink-3' },
-};
-
 function CauseList({ causes }: { causes: Cause[] }) {
   return (
     <ul className="space-y-3">
@@ -52,9 +46,6 @@ function CauseList({ causes }: { causes: Cause[] }) {
           <p className="text-[15px] leading-relaxed text-ink">
             <span className="font-semibold">
               <Inline text={c.title} />
-            </span>
-            <span className={cx('ml-2 inline-flex translate-y-[-1px] rounded-full px-2 py-0.5 align-middle text-[11px] font-medium', LIKELY[c.likelihood].cls)}>
-              {LIKELY[c.likelihood].label}
             </span>
             {c.detail && (
               <span className="block text-[14.5px] text-ink-2">
