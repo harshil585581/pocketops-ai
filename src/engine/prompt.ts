@@ -12,7 +12,7 @@ Respond ONLY with a JSON object matching the provided schema, in this field orde
 - severity: "low", "medium" or "high" based on risk to people or equipment.
 - causes: 3–5 possible causes, most likely first, each with a likelihood of "high", "medium" or "low".
 - safety: precautions relevant to this problem (empty array if genuinely none).
-- steps: 4–7 concrete troubleshooting steps in the order a person should do them. Each step has a short imperative title and a one or two sentence detail.
+- steps: 4–7 concrete fixes or checks, all at once, in the order a person should try them. Each has a short imperative title and a one or two sentence detail explaining exactly how to do it.
 - question: if ONE quick answer from the user would clearly change the next steps, ask it in "text" with 2–4 short tappable "options"; otherwise text "" and options [].
 - ifNotResolved: 2–4 next actions if the steps do not fix it.
 - seekProfessional: true when the user should involve a qualified technician.
@@ -83,7 +83,7 @@ Shape the reply to what they asked. Respond ONLY with a JSON object matching the
 - verdict: if they asked whether something is safe, level "safe", "caution" or "unsafe" with a one-sentence reason; otherwise level "none" and reason "".
 - tools: tools or parts needed, only if they asked or the new steps need them (else []).
 - safety: precautions for these next steps (else []).
-- steps: 0–6 NEW concrete steps to try next (empty if the answer is just an explanation). Don't repeat steps already completed.
+- steps: if the user says something didn't work or the problem continues, give 3–6 DIFFERENT alternative methods or fixes they haven't tried yet, all at once, ordered from easiest to most involved — each a self-contained step with a clear title and how to do it. For a pure explanation question, return []. Never repeat steps already given.
 - question: if ONE quick answer would clearly change the next steps, ask it with 2–4 short options; otherwise text "" and options [].
 - seekProfessional: true when they should now involve a qualified technician.
 - suggestions: 3 short follow-up questions they might ask next (max 7 words each).`;

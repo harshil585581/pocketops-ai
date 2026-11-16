@@ -1,166 +1,143 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { motion } from 'motion/react';
 import {
-  ArrowLeft,
-  ArrowRight,
+  AlertTriangle,
   Check,
-  ChevronDown,
   Cloud,
   ClipboardCopy,
   Cpu,
   HardHat,
+  Lightbulb,
   ListChecks,
-  ListOrdered,
   MessageCircleQuestion,
-  PartyPopper,
   RotateCcw,
   ShieldAlert,
   ShieldCheck,
   ShieldX,
-  SkipForward,
   Sparkles,
   Square,
-  Target,
   Volume2,
   Wrench,
-  X,
 } from 'lucide-react';
-import type { FollowUp, Question, Solution, Step } from '../lib/types';
+import type { Cause, FollowUp, Question, Solution, Step } from '../lib/types';
 import type { Route } from '../engine';
 import { parsePartialJson } from '../engine/parse';
 import { useToast } from '../state/toast';
 import { Inline, Markdown } from './Markdown';
-import { ProfessionalNote, SafetyCallout, StepList } from './GuideView';
-import { LikelihoodMeter, cx } from './ui';
+import { cx } from './ui';
 
-// ───────────────────────── Fix-it walkthrough ─────────────────────────
+// ───────────────────────── Document-style pieces ─────────────────────────
 
-/** One step at a time, with Done / Didn't work / Skip. Switchable to the full checklist. */
-export function Walkthrough({
-  steps,
-  done,
-  onToggle,
-  onStepFailed,
-}: {
-  steps: Step[];
-  done: Set<number>;
-  onToggle(i: number): void;
-  onStepFailed?(i: number, step: Step): void;
-}) {
-  const firstOpen = () => {
-    const i = steps.findIndex((_, k) => !done.has(k));
-    return i === -1 ? steps.length : i;
-  };
-  const [cursor, setCursor] = useState(firstOpen);
-  const [list, setList] = useState(false);
-  const total = steps.length;
-  const completed = done.size;
-  const finished = cursor >= total;
-
-  const nextOpen = (from: number) => {
-    for (let k = from + 1; k < total; k++) if (!done.has(k)) return k;
-    return total;
-  };
-  const markDone = () => {
-    if (!done.has(cursor)) onToggle(cursor);
-    setCursor(nextOpen(cursor));
-  };
-
+function Heading({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
-    <div className="card overflow-hidden">
-      <div className="flex items-center gap-3 border-b border-line px-4 py-3 sm:px-5">
-        <span className="grid size-7 place-items-center rounded-lg bg-local/12 text-local">
-          <ListChecks className="size-4" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[14px] font-semibold tracking-tight">Fix-it walkthrough</p>
-          <div className="mt-1.5 flex items-center gap-2">
-            <span className="h-1.5 w-full max-w-48 overflow-hidden rounded-full bg-line-strong">
-              <motion.span
-                className="block h-full rounded-full bg-gradient-to-r from-local to-cloud"
-                animate={{ width: `${total ? (completed / total) * 100 : 0}%` }}
-                transition={{ type: 'spring', stiffness: 140, damping: 22 }}
-              />
-            </span>
-            <span className="shrink-0 font-mono text-[11px] text-ink-3">
-              {completed}/{total}
-            </span>
-          </div>
-        </div>
-        <button onClick={() => setList((v) => !v)} className="btn-ghost h-8 shrink-0 px-2.5 text-[12.5px]">
-          {list ? <Target className="size-3.5" /> : <ListOrdered className="size-3.5" />}
-          {list ? 'One at a time' : 'All steps'}
-        </button>
-      </div>
+    <h3 className="mb-3 flex items-center gap-2 text-[16.5px] font-semibold tracking-tight text-ink">
+      <span className="grid size-6 place-items-center rounded-md bg-surface-2 text-ink-2">{icon}</span>
+      {children}
+    </h3>
+  );
+}
 
-      {list ? (
-        <div className="p-2 sm:p-3">
-          <StepList steps={steps} done={done} onToggle={onToggle} onStepFailed={onStepFailed} />
-        </div>
-      ) : finished ? (
-        <div className="flex flex-col items-center gap-2 px-5 py-8 text-center">
-          <span className="grid size-12 place-items-center rounded-2xl bg-local/12 text-local">
-            <PartyPopper className="size-6" />
-          </span>
-          <p className="text-[16px] font-semibold tracking-tight">All steps done</p>
-          <p className="max-w-sm text-[13.5px] text-ink-2">Let PocketOps know below whether that fixed it — or say what you’re seeing now.</p>
-          <button onClick={() => setCursor(0)} className="btn-ghost mt-1 h-8 text-[12.5px]">
-            <RotateCcw className="size-3.5" /> Review steps
-          </button>
-        </div>
-      ) : (
-        <motion.div key={cursor} initial={{ opacity: 0, x: 14 }} animate={{ opacity: 1, x: 0 }} transition={{ type: 'spring', stiffness: 320, damping: 30 }} className="p-5 sm:p-6">
-          <div className="flex items-start gap-4">
-            <span
-              className={cx(
-                'grid size-10 shrink-0 place-items-center rounded-xl font-mono text-[15px] font-semibold',
-                done.has(cursor) ? 'bg-local text-on-local' : 'bg-ink text-canvas',
-              )}
-            >
-              {done.has(cursor) ? <Check className="size-5" strokeWidth={3} /> : cursor + 1}
+const LIKELY: Record<Cause['likelihood'], { label: string; cls: string }> = {
+  high: { label: 'Most likely', cls: 'bg-local/10 text-local' },
+  medium: { label: 'Possible', cls: 'bg-amber-500/12 text-amber-700 dark:text-amber-300' },
+  low: { label: 'Less likely', cls: 'bg-surface-3 text-ink-3' },
+};
+
+function CauseList({ causes }: { causes: Cause[] }) {
+  return (
+    <ul className="space-y-3">
+      {causes.map((c, i) => (
+        <li key={c.title + i} className="flex gap-3">
+          <span className="mt-[0.62em] size-1.5 shrink-0 rounded-full bg-ink-3" />
+          <p className="text-[15px] leading-relaxed text-ink">
+            <span className="font-semibold">
+              <Inline text={c.title} />
             </span>
-            <div className="min-w-0 flex-1">
-              <p className="label">
-                Step {cursor + 1} of {total}
-              </p>
-              <p className="mt-1 text-[18px] leading-snug font-semibold tracking-tight"><Inline text={steps[cursor].title} /></p>
-              {steps[cursor].detail && <p className="mt-2 text-[14.5px] leading-relaxed text-ink-2"><Inline text={steps[cursor].detail} /></p>}
-            </div>
-          </div>
-          <div className="mt-5 flex flex-wrap items-center gap-2 sm:pl-14">
-            <button onClick={markDone} className="btn-brand h-10 px-4">
-              <Check className="size-4" strokeWidth={2.6} /> Done
-            </button>
-            {onStepFailed && (
-              <button onClick={() => onStepFailed(cursor, steps[cursor])} className="btn-secondary h-10 text-[13.5px]">
-                <X className="size-4" /> Didn’t work
-              </button>
+            <span className={cx('ml-2 inline-flex translate-y-[-1px] rounded-full px-2 py-0.5 align-middle text-[11px] font-medium', LIKELY[c.likelihood].cls)}>
+              {LIKELY[c.likelihood].label}
+            </span>
+            {c.detail && (
+              <span className="block text-[14.5px] text-ink-2">
+                <Inline text={c.detail} />
+              </span>
             )}
-            <button onClick={() => setCursor(Math.min(cursor + 1, total))} className="btn-ghost h-10 text-[13.5px]">
-              <SkipForward className="size-4" /> Skip
-            </button>
-            <span className="ml-auto flex gap-1">
+          </p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** All fixes at once, numbered. Each can be ticked off; nothing to page through. */
+function FixList({ steps, done, onToggle }: { steps: Step[]; done?: Set<number>; onToggle?(i: number): void }) {
+  return (
+    <ol className="space-y-4">
+      {steps.map((st, i) => {
+        const checked = done?.has(i) ?? false;
+        return (
+          <li key={i} className="flex gap-3.5">
+            {onToggle ? (
               <button
-                onClick={() => setCursor(Math.max(cursor - 1, 0))}
-                disabled={cursor === 0}
-                aria-label="Previous step"
-                className="grid size-9 place-items-center rounded-lg text-ink-3 transition hover:bg-surface-2 hover:text-ink disabled:opacity-30"
+                onClick={() => onToggle(i)}
+                aria-pressed={checked}
+                aria-label={checked ? `Mark step ${i + 1} as not done` : `Mark step ${i + 1} as done`}
+                title={checked ? 'Done — click to undo' : 'Mark as done'}
+                className={cx(
+                  'mt-0.5 grid size-6 shrink-0 place-items-center rounded-full border-[1.5px] font-mono text-[11.5px] font-semibold transition',
+                  checked ? 'border-local bg-local text-on-local' : 'border-line-strong text-ink-2 hover:border-local hover:text-local',
+                )}
               >
-                <ArrowLeft className="size-4" />
+                {checked ? <Check className="size-3.5" strokeWidth={3} /> : i + 1}
               </button>
-              <button
-                onClick={() => setCursor(Math.min(cursor + 1, total - 1))}
-                disabled={cursor >= total - 1}
-                aria-label="Next step"
-                className="grid size-9 place-items-center rounded-lg text-ink-3 transition hover:bg-surface-2 hover:text-ink disabled:opacity-30"
-              >
-                <ArrowRight className="size-4" />
-              </button>
+            ) : (
+              <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full border-[1.5px] border-line-strong font-mono text-[11.5px] font-semibold text-ink-2">
+                {i + 1}
+              </span>
+            )}
+            <div className={cx('min-w-0 flex-1 transition-opacity', checked && 'opacity-55')}>
+              <p className={cx('text-[15px] leading-relaxed font-semibold text-ink', checked && 'line-through decoration-ink-3/60')}>
+                <Inline text={st.title} />
+              </p>
+              {st.detail && (
+                <p className="mt-0.5 text-[14.5px] leading-relaxed text-ink-2">
+                  <Inline text={st.detail} />
+                </p>
+              )}
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function SafetyNote({ items }: { items: string[] }) {
+  if (!items.length) return null;
+  return (
+    <div className="rounded-xl border-l-[3px] border-warn bg-amber-50/80 px-4 py-3 dark:bg-warn/[0.07]">
+      <p className="flex items-center gap-2 text-[14.5px] font-semibold text-warn">
+        <AlertTriangle className="size-4" /> Safety first
+      </p>
+      <ul className="mt-1.5 space-y-1">
+        {items.map((x) => (
+          <li key={x} className="flex gap-2.5 text-[14.5px] leading-relaxed text-ink">
+            <span className="mt-[0.62em] size-1.5 shrink-0 rounded-full bg-warn" />
+            <span>
+              <Inline text={x} />
             </span>
-          </div>
-        </motion.div>
-      )}
+          </li>
+        ))}
+      </ul>
     </div>
+  );
+}
+
+function ProNote() {
+  return (
+    <p className="flex items-start gap-2.5 rounded-xl bg-danger/[0.07] px-4 py-3 text-[14px] leading-relaxed text-ink">
+      <HardHat className="mt-0.5 size-4 shrink-0 text-danger" />
+      This may need a qualified technician. Don’t attempt repairs beyond the safe checks above.
+    </p>
   );
 }
 
@@ -189,71 +166,6 @@ export function QuestionCard({ question, onAnswer, answered }: { question: Quest
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function CauseSpotlight({ causes }: { causes: Solution['causes'] }) {
-  const [open, setOpen] = useState(false);
-  if (!causes.length) return null;
-  const [top, ...rest] = causes;
-  return (
-    <div className="rounded-2xl border border-line bg-surface shadow-card">
-      <div className="p-4 sm:p-5">
-        <div className="flex items-center justify-between gap-3">
-          <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-local">
-            <Target className="size-3.5" /> Most likely cause
-          </span>
-          <LikelihoodMeter value={top.likelihood} />
-        </div>
-        <p className="mt-2 text-[16.5px] font-semibold tracking-tight">{top.title}</p>
-        {top.detail && <p className="mt-1 text-[14px] leading-relaxed text-ink-2"><Inline text={top.detail} /></p>}
-      </div>
-      {rest.length > 0 && (
-        <>
-          <button
-            onClick={() => setOpen((v) => !v)}
-            aria-expanded={open}
-            className="flex w-full items-center gap-2 border-t border-line px-4 py-2.5 text-left text-[13px] font-medium text-ink-2 transition hover:bg-surface-2/60 sm:px-5"
-          >
-            Other possibilities <span className="font-mono text-[11px] text-ink-3">{rest.length}</span>
-            <ChevronDown className={cx('ml-auto size-4 text-ink-3 transition-transform', open && 'rotate-180')} />
-          </button>
-          <div className={cx('grid transition-[grid-template-rows] duration-300', open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
-            <div className="overflow-hidden">
-              <ul className="divide-y divide-line border-t border-line">
-                {rest.map((c) => (
-                  <li key={c.title} className="flex gap-3 px-4 py-3 sm:px-5">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[14px] font-medium">{c.title}</p>
-                      {c.detail && <p className="mt-0.5 text-[13px] leading-relaxed text-ink-2"><Inline text={c.detail} /></p>}
-                    </div>
-                    <LikelihoodMeter value={c.likelihood} />
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-function Collapsible({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="card overflow-hidden">
-      <button onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex w-full items-center gap-2.5 px-4 py-3 text-left transition hover:bg-surface-2/60 sm:px-5">
-        <span className="text-ink-3">{icon}</span>
-        <span className="flex-1 text-[14px] font-medium">{title}</span>
-        <ChevronDown className={cx('size-4 text-ink-3 transition-transform', open && 'rotate-180')} />
-      </button>
-      <div className={cx('grid transition-[grid-template-rows] duration-300', open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}>
-        <div className="overflow-hidden">
-          <div className="border-t border-line px-4 py-4 sm:px-5">{children}</div>
-        </div>
-      </div>
     </div>
   );
 }
@@ -306,6 +218,78 @@ function Tools({ tools }: { tools: string[] }) {
 
 // ───────────────────────── Answers ─────────────────────────
 
+interface DocProps {
+  answer: string;
+  causes?: Cause[];
+  safety?: string[];
+  steps?: Step[];
+  stepsTitle?: string;
+  ifNotResolved?: string[];
+  seekProfessional?: boolean;
+  question?: Question;
+  verdict?: FollowUp['verdict'];
+  tools?: string[];
+  done?: Set<number>;
+  onToggle?(i: number): void;
+  onAnswer?(text: string): void;
+  answered?: boolean;
+  streaming?: boolean;
+}
+
+/** One flowing, ChatGPT-style response: everything visible at once, top to bottom. */
+function DocAnswer(d: DocProps) {
+  const hasMore = Boolean(d.causes?.length || d.safety?.length || d.steps?.length || d.verdict || d.tools?.length);
+  return (
+    <div className="space-y-6">
+      {(d.answer || d.streaming) && <Markdown text={d.answer} caret={d.streaming && !hasMore} />}
+      {d.verdict && <Verdict v={d.verdict} />}
+      {d.causes && d.causes.length > 0 && (
+        <section>
+          <Heading icon={<Lightbulb className="size-3.5" />}>Likely causes</Heading>
+          <CauseList causes={d.causes} />
+        </section>
+      )}
+      {d.safety && <SafetyNote items={d.safety} />}
+      {d.tools && d.tools.length > 0 && <Tools tools={d.tools} />}
+      {d.steps && d.steps.length > 0 && (
+        <section>
+          <Heading icon={<ListChecks className="size-3.5" />}>{d.stepsTitle ?? 'How to fix it'}</Heading>
+          <FixList steps={d.steps} done={d.done} onToggle={d.onToggle} />
+        </section>
+      )}
+      {d.ifNotResolved && d.ifNotResolved.length > 0 && (
+        <section>
+          <Heading icon={<HardHat className="size-3.5" />}>If it still doesn’t work</Heading>
+          <ul className="space-y-2">
+            {d.ifNotResolved.map((x) => (
+              <li key={x} className="flex gap-3 text-[15px] leading-relaxed text-ink">
+                <span className="mt-[0.62em] size-1.5 shrink-0 rounded-full bg-ink-3" />
+                <span>
+                  <Inline text={x} />
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {d.seekProfessional && <ProNote />}
+      {d.question && !d.streaming && <QuestionCard question={d.question} onAnswer={d.onAnswer} answered={d.answered} />}
+      {d.streaming && hasMore && (
+        <span className="inline-flex gap-1">
+          {[0, 1, 2].map((i) => (
+            <motion.span
+              key={i}
+              className="size-1.5 rounded-full bg-gradient-to-r from-local to-cloud"
+              animate={{ opacity: [0.3, 1, 0.3] }}
+              transition={{ duration: 1, repeat: Infinity, delay: i * 0.15 }}
+            />
+          ))}
+        </span>
+      )}
+    </div>
+  );
+}
+
 interface Interactive {
   done: Set<number>;
   onToggle(i: number): void;
@@ -314,52 +298,51 @@ interface Interactive {
   answered?: boolean;
 }
 
-/** First answer to a problem: conversational lead, cause spotlight, safety, walkthrough, question. */
-export function GuideAnswer({ solution: sol, done, onToggle, onStepFailed, onAnswer, answered }: { solution: Solution } & Interactive) {
+/** First answer to a problem. */
+export function GuideAnswer({ solution: sol, done, onToggle, onAnswer, answered }: { solution: Solution } & Interactive) {
   return (
-    <div className="space-y-4">
-      <Markdown text={sol.answer || sol.summary} />
-      <CauseSpotlight causes={sol.causes} />
-      <SafetyCallout items={sol.safety} />
-      {sol.steps.length > 0 && <Walkthrough steps={sol.steps} done={done} onToggle={onToggle} onStepFailed={onStepFailed} />}
-      {sol.question && <QuestionCard question={sol.question} onAnswer={onAnswer} answered={answered} />}
-      {(sol.ifNotResolved.length > 0 || sol.seekProfessional) && (
-        <Collapsible title="If it’s still not resolved" icon={<HardHat className="size-4" />}>
-          {sol.seekProfessional && <ProfessionalNote />}
-          <ul className="space-y-2">
-            {sol.ifNotResolved.map((x, i) => (
-              <li key={x} className="flex gap-3 text-[14px] leading-relaxed text-ink-2">
-                <span className="mt-0.5 font-mono text-[11px] text-ink-3">{String.fromCharCode(65 + i)}</span>
-                {x}
-              </li>
-            ))}
-          </ul>
-        </Collapsible>
-      )}
-    </div>
+    <DocAnswer
+      answer={sol.answer || sol.summary}
+      causes={sol.causes}
+      safety={sol.safety}
+      steps={sol.steps}
+      ifNotResolved={sol.ifNotResolved}
+      seekProfessional={sol.seekProfessional}
+      question={sol.question}
+      done={done}
+      onToggle={onToggle}
+      onAnswer={onAnswer}
+      answered={answered}
+    />
   );
 }
 
-/** Follow-up answer, shaped to the question: verdict, tools, steps, a question back. */
-export function ReplyAnswer({ reply, done, onToggle, onStepFailed, onAnswer, answered }: { reply: FollowUp } & Interactive) {
+/** Follow-up answer, shaped to the question. */
+export function ReplyAnswer({ reply, done, onToggle, onAnswer, answered }: { reply: FollowUp } & Interactive) {
   return (
-    <div className="space-y-4">
-      <Markdown text={reply.message} />
-      {reply.verdict && <Verdict v={reply.verdict} />}
-      {reply.tools && reply.tools.length > 0 && <Tools tools={reply.tools} />}
-      <SafetyCallout items={reply.safety} title="Safety for these steps" />
-      {reply.steps.length > 0 && <Walkthrough steps={reply.steps} done={done} onToggle={onToggle} onStepFailed={onStepFailed} />}
-      {reply.question && <QuestionCard question={reply.question} onAnswer={onAnswer} answered={answered} />}
-      {reply.seekProfessional && <ProfessionalNote />}
-    </div>
+    <DocAnswer
+      answer={reply.message}
+      verdict={reply.verdict}
+      tools={reply.tools}
+      safety={reply.safety}
+      steps={reply.steps}
+      stepsTitle="Try these next"
+      seekProfessional={reply.seekProfessional}
+      question={reply.question}
+      done={done}
+      onToggle={onToggle}
+      onAnswer={onAnswer}
+      answered={answered}
+    />
   );
 }
 
 // ───────────────────────── Live streaming ─────────────────────────
 
 const PHASES = ['Reading your message', 'Thinking it through', 'Writing the answer'];
+const LIKELIHOODS = ['high', 'medium', 'low'] as const;
 
-/** Renders an answer while it is still being generated. */
+/** Renders the answer in the final layout while it is still being written. */
 export function StreamingAnswer({ raw, route, deep, onStop }: { raw: string; route: Route; deep?: boolean; onStop(): void }) {
   const [t, setT] = useState(0);
   useEffect(() => {
@@ -368,9 +351,22 @@ export function StreamingAnswer({ raw, route, deep, onStop }: { raw: string; rou
     return () => clearInterval(id);
   }, []);
   const p = useMemo(() => (raw ? parsePartialJson(raw) : null), [raw]);
-  const text = (typeof p?.answer === 'string' && p.answer) || (typeof p?.message === 'string' && p.message) || '';
-  const causes = Array.isArray(p?.causes) ? (p!.causes as { title?: string }[]).filter((c) => c?.title) : [];
-  const steps = Array.isArray(p?.steps) ? (p!.steps as { title?: string }[]).filter((s) => s?.title) : [];
+  const strs = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.trim().length > 0) : []);
+  const answer = (typeof p?.answer === 'string' && p.answer) || (typeof p?.message === 'string' && p.message) || '';
+  const causes: Cause[] = Array.isArray(p?.causes)
+    ? (p!.causes as Record<string, unknown>[])
+        .filter((c) => typeof c?.title === 'string' && c.title)
+        .map((c) => ({
+          title: String(c.title),
+          detail: typeof c.detail === 'string' ? c.detail : '',
+          likelihood: LIKELIHOODS.includes(c.likelihood as never) ? (c.likelihood as Cause['likelihood']) : 'medium',
+        }))
+    : [];
+  const steps: Step[] = Array.isArray(p?.steps)
+    ? (p!.steps as Record<string, unknown>[])
+        .filter((s) => typeof s?.title === 'string' && s.title)
+        .map((s) => ({ title: String(s.title), detail: typeof s.detail === 'string' ? s.detail : '' }))
+    : [];
   const local = route.target === 'on-device';
   const phase = PHASES[Math.min(Math.floor(t / 1600), PHASES.length - 1)];
 
@@ -387,8 +383,17 @@ export function StreamingAnswer({ raw, route, deep, onStop }: { raw: string; rou
         </button>
       </div>
 
-      {text ? (
-        <Markdown text={text} caret />
+      {answer || causes.length || steps.length ? (
+        <DocAnswer
+          answer={answer}
+          causes={causes}
+          safety={strs(p?.safety)}
+          steps={steps}
+          stepsTitle={typeof p?.message === 'string' || 'verdict' in (p ?? {}) ? 'Try these next' : 'How to fix it'}
+          ifNotResolved={strs(p?.ifNotResolved)}
+          tools={strs(p?.tools)}
+          streaming
+        />
       ) : (
         <p className="flex items-center gap-2.5 text-[15px] text-ink-3">
           <span className="flex gap-1">
@@ -403,27 +408,6 @@ export function StreamingAnswer({ raw, route, deep, onStop }: { raw: string; rou
           </span>
           {phase}…
         </p>
-      )}
-
-      {causes.length > 0 && (
-        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-line bg-surface/70 p-4">
-          <p className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-local">
-            <Target className="size-3.5" /> Most likely cause
-          </p>
-          <p className="mt-1 text-[15.5px] font-semibold tracking-tight">{causes[0].title}</p>
-        </motion.div>
-      )}
-      {steps.length > 0 && (
-        <div className="card p-4">
-          <p className="label mb-2">Building your walkthrough</p>
-          <ol className="space-y-1.5">
-            {steps.map((s, i) => (
-              <motion.li key={i} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} className="flex gap-2.5 text-[14px] text-ink-2">
-                <span className="font-mono text-[12px] text-ink-3">{i + 1}.</span> {s.title}
-              </motion.li>
-            ))}
-          </ol>
-        </div>
       )}
     </div>
   );
