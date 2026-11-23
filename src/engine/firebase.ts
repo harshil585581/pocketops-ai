@@ -4,6 +4,7 @@
  */
 import type { GenerativeModel, InferenceMode, ThinkingLevel } from 'firebase/ai';
 import { getFirebaseApp } from '../lib/firebaseApp';
+import { toInlineData } from '../lib/images';
 import { FOLLOWUP_JSON_SCHEMA, SOLUTION_JSON_SCHEMA } from './prompt';
 
 export { firebaseConfigured } from '../lib/firebaseApp';
@@ -62,15 +63,19 @@ export async function generateWithFirebase(
   signal?: AbortSignal,
   /** Receives the accumulated text as it streams in. */
   onText?: (text: string) => void,
+  /** Photos (data URLs) sent alongside the prompt. */
+  images: string[] = [],
 ): Promise<{ text: string; source: 'on-device' | 'cloud' }> {
   const model = await getModel(mode, cloud);
+  // Images go first so the model looks at them before reading the instructions.
+  const request = images.length ? [...images.map(toInlineData), { text: prompt }] : prompt;
   try {
     if (!onText) {
-      const result = await model.generateContent(prompt, { signal });
+      const result = await model.generateContent(request, { signal });
       return { text: result.response.text(), source: result.response.inferenceSource === 'on_device' ? 'on-device' : 'cloud' };
     }
     // Streaming: render the answer while it's being written (on-device and in the cloud).
-    const result = await model.generateContentStream(prompt, { signal });
+    const result = await model.generateContentStream(request, { signal });
     let text = '';
     for await (const chunk of result.stream) {
       try {

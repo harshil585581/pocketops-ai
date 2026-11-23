@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import {
@@ -19,6 +19,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import { AttachButton, AttachmentTray, ImageGrid } from '../components/Attachments';
 import { ConfirmDialog } from '../components/Dialog';
 import { GuideAnswer, MessageActions, ReplyAnswer, StreamingAnswer, answerText } from '../components/Answer';
 import { Logo, SeverityBadge, SourceBadge, cx } from '../components/ui';
@@ -36,6 +37,7 @@ import {
 import { categoryById } from '../lib/categories';
 import { deleteSession, getSession, updateSession } from '../lib/db';
 import { formatDuration, relativeTime } from '../lib/format';
+import { imageFiles, useImageAttachments } from '../lib/images';
 import { getRuntimeConfig } from '../lib/remoteConfig';
 import type { AssistantTurn, InferenceSource, Session, Step, Turn } from '../lib/types';
 import { useSession } from '../lib/useSessions';
@@ -46,13 +48,14 @@ const SUGGESTIONS = ['That didn’t fix it', 'Explain the steps more simply', 'W
 
 function toPlainText(s: Session) {
   const sol = s.solution;
-  const lines = [sol.title, '', `Problem: ${s.problem}`, '', sol.summary, '', 'Possible causes:'];
+  const photos = (n?: number) => (n ? ` [${n} photo${n > 1 ? 's' : ''}]` : '');
+  const lines = [sol.title, '', `Problem: ${s.problem}${photos(s.images?.length)}`, '', sol.summary, '', 'Possible causes:'];
   sol.causes.forEach((c, i) => lines.push(`${i + 1}. ${c.title} (${c.likelihood}) — ${c.detail}`));
   lines.push('', 'Steps:');
   sol.steps.forEach((st, i) => lines.push(`${i + 1}. ${st.title}${st.detail ? ` — ${st.detail}` : ''}`));
   if (sol.safety.length) lines.push('', 'Safety:', ...sol.safety.map((x) => `• ${x}`));
   for (const t of s.turns ?? []) {
-    if (t.role === 'user') lines.push('', `You: ${t.action === 'deep' ? 'Deep analysis' : t.text}`);
+    if (t.role === 'user') lines.push('', `You: ${t.action === 'deep' ? 'Deep analysis' : t.text}${photos(t.images?.length)}`.trimEnd());
     else if (t.kind === 'reply') {
       lines.push('', `PocketOps: ${t.reply.message}`);
       t.reply.steps.forEach((st, i) => lines.push(`  ${i + 1}. ${st.title}${st.detail ? ` — ${st.detail}` : ''}`));
@@ -77,6 +80,9 @@ export default function Thread() {
   const [stream, setStream] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const onImageError = useCallback((title: string) => push({ tone: 'error', title }), [push]);
+  const photos = useImageAttachments(onImageError);
   const abort = useRef<AbortController | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
@@ -95,9 +101,10 @@ export default function Thread() {
   }, []);
   useEffect(() => {
     setDraft('');
+    photos.clear();
     setError(null);
     window.scrollTo({ top: 0 });
-  }, [id]);
+  }, [id, photos.clear]);
   useEffect(() => {
     if (fresh && session && !toasted.current) {
       toasted.current = true;
@@ -123,7 +130,7 @@ export default function Thread() {
   const turns = session.turns ?? [];
   const resolved = session.status === 'resolved';
   const snap = { online: engine.online, local: engine.local, mode: engine.mode };
-  const composerRoute = planRoute(snap, { problemLength: draft.trim().length });
+  const composerRoute = planRoute(snap, { problemLength: draft.trim().length, images: photos.images.length });
   const hasDeep = turns.some((t) => t.role === 'assistant' && t.kind === 'guide' && t.depth === 'deep');
 
   // ── Persistence helpers (always re-read so concurrent edits aren't lost) ──
@@ -152,7 +159,7 @@ export default function Thread() {
   // ── Conversation ──
   async function respond(base: Session, user: Extract<Turn, { role: 'user' }>) {
     const deep = user.action === 'deep';
-    const route = planRoute(snap, deep ? { depth: 'deep' } : { problemLength: user.text.length });
+    const route = planRoute(snap, deep ? { depth: 'deep' } : { problemLength: user.text.length, images: user.images?.length });
     if (route.target === 'none') return setError(route.reason);
     const ac = new AbortController();
     abort.current = ac;
@@ -161,8 +168,8 @@ export default function Thread() {
     setPending({ route, deep });
     try {
       const turn: AssistantTurn = deep
-        ? guideTurn(await runDiagnosis(base.problem, base.category, snap, { depth: 'deep', signal: ac.signal, onText: setStream }))
-        : replyTurn(await runFollowUp(base, user.text, snap, { signal: ac.signal, onText: setStream }));
+        ? guideTurn(await runDiagnosis(base.problem, base.category, snap, { depth: 'deep', signal: ac.signal, onText: setStream, images: base.images }))
+        : replyTurn(await runFollowUp(base, user.text, snap, { signal: ac.signal, onText: setStream, images: user.images }));
       await update((s) => ({ ...s, turns: [...(s.turns ?? []), turn] }));
     } catch (e) {
       if (ac.signal.aborted) setError('Stopped. Send your message again when you’re ready.');
@@ -173,18 +180,19 @@ export default function Thread() {
     }
   }
 
-  async function send(text: string, action?: 'deep') {
+  async function send(text: string, action?: 'deep', images: string[] = []) {
     const t = text.trim();
-    if ((!t && !action) || pending) return;
-    const route = planRoute(snap, action ? { depth: 'deep' } : { problemLength: t.length });
+    if ((!t && !action && !images.length) || pending || photos.busy) return;
+    const route = planRoute(snap, action ? { depth: 'deep' } : { problemLength: t.length, images: images.length });
     if (route.target === 'none') return setError(route.reason);
-    const u = userTurn(action ? 'Deep analysis' : t, action);
+    const u = userTurn(action ? 'Deep analysis' : t, action, action ? undefined : images);
     let before: Session | undefined;
     await updateSession(session!.id, (s) => {
       before = s;
       return { ...s, turns: [...(s.turns ?? []), u], status: 'open' };
     });
     setDraft('');
+    if (images.length) photos.clear();
     if (before) respond(before, u);
   }
 
@@ -208,7 +216,7 @@ export default function Thread() {
 
   /** Regenerate the very first guide (only while it is the only answer). */
   const regenerateInitial = async () => {
-    const route = planRoute(snap, { problemLength: session.problem.length });
+    const route = planRoute(snap, { problemLength: session.problem.length, images: session.images?.length });
     if (route.target === 'none') return setError(route.reason);
     const ac = new AbortController();
     abort.current = ac;
@@ -216,7 +224,7 @@ export default function Thread() {
     setStream('');
     setPending({ route, deep: false });
     try {
-      const r = await runDiagnosis(session.problem, session.category, snap, { signal: ac.signal, onText: setStream });
+      const r = await runDiagnosis(session.problem, session.category, snap, { signal: ac.signal, onText: setStream, images: session.images });
       await update((s) => ({
         ...s,
         solution: r.solution,
@@ -307,7 +315,7 @@ export default function Thread() {
 
       {/* Conversation */}
       <div className="mx-auto w-full max-w-3xl flex-1 space-y-8 px-4 pt-6 pb-10 sm:px-6">
-        <UserBubble text={session.problem} at={session.createdAt} />
+        <UserBubble text={session.problem} images={session.images} at={session.createdAt} />
 
         <Assistant
           source={session.source}
@@ -338,7 +346,7 @@ export default function Thread() {
                 </span>
               </div>
             ) : (
-              <UserBubble key={t.id} text={t.text} at={t.createdAt} />
+              <UserBubble key={t.id} text={t.text} images={t.images} at={t.createdAt} />
             )
           ) : (
             <Assistant
@@ -459,10 +467,39 @@ export default function Thread() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            send(draft);
+            send(draft, undefined, photos.images);
           }}
-          className="card pointer-events-auto mx-auto flex max-w-3xl items-end gap-2 p-2 pl-4 transition-shadow focus-within:shadow-pop focus-within:ring-brand max-sm:mx-3 sm:mx-auto"
+          onDragOver={(e) => {
+            if (composerRoute.target === 'none' || !e.dataTransfer.types.includes('Files')) return;
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false);
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            photos.add(imageFiles(e.dataTransfer.files));
+          }}
+          className={cx(
+            'card pointer-events-auto relative mx-auto flex max-w-3xl flex-wrap items-end gap-2 p-2 transition-shadow focus-within:shadow-pop focus-within:ring-brand max-sm:mx-3 sm:mx-auto',
+            dragging && 'ring-brand shadow-pop',
+          )}
         >
+          {dragging && (
+            <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center rounded-[inherit] bg-surface/85 text-[14px] font-medium text-brand backdrop-blur-sm">
+              Drop photos to attach
+            </div>
+          )}
+          <AttachmentTray images={photos.images} onRemove={photos.remove} className="basis-full px-2 pt-1" />
+          <AttachButton
+            count={photos.images.length}
+            busy={photos.busy}
+            disabled={composerRoute.target === 'none' && !photos.images.length}
+            onFiles={photos.add}
+            className="mb-0.5 size-10"
+          />
           <div className="min-w-0 flex-1 py-1.5">
             <textarea
               ref={input}
@@ -472,21 +509,40 @@ export default function Thread() {
                 e.target.style.height = '0px';
                 e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
               }}
+              onPaste={(e) => {
+                const files = imageFiles(e.clipboardData.items);
+                if (!files.length) return;
+                e.preventDefault();
+                photos.add(files);
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                   e.preventDefault();
-                  send(draft);
+                  send(draft, undefined, photos.images);
                 }
               }}
               rows={1}
-              disabled={composerRoute.target === 'none'}
-              placeholder={composerRoute.target === 'none' ? 'AI is unavailable right now — this guide stays saved here.' : 'Tell PocketOps what happened, or ask a follow-up…'}
+              disabled={composerRoute.target === 'none' && !photos.images.length}
+              placeholder={
+                composerRoute.target === 'none'
+                  ? photos.images.length
+                    ? composerRoute.reason
+                    : 'AI is unavailable right now — this guide stays saved here.'
+                  : photos.images.length
+                    ? 'Ask about the photo, or just send it…'
+                    : 'Tell PocketOps what happened, or ask a follow-up…'
+              }
               aria-label="Follow-up message"
               className="block max-h-40 w-full resize-none bg-transparent text-[15px] leading-relaxed text-ink placeholder:text-ink-3 focus:outline-none disabled:cursor-not-allowed"
             />
             <RouteHint route={composerRoute} />
           </div>
-          <button type="submit" aria-label="Send" disabled={!draft.trim() || !!pending || composerRoute.target === 'none'} className="btn-brand size-10 shrink-0 !px-0">
+          <button
+            type="submit"
+            aria-label="Send"
+            disabled={(!draft.trim() && !photos.images.length) || !!pending || photos.busy || composerRoute.target === 'none'}
+            className="btn-brand size-10 shrink-0 !px-0"
+          >
             {pending ? <Loader2 className="size-4 animate-spin" /> : <ArrowUp className="size-4.5" strokeWidth={2.4} />}
           </button>
         </form>
@@ -533,12 +589,15 @@ function IconButton({ label, onClick, children, danger }: { label: string; onCli
   );
 }
 
-function UserBubble({ text, at }: { text: string; at: number }) {
+function UserBubble({ text, images, at }: { text: string; images?: string[]; at: number }) {
   return (
     <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-end gap-1">
-      <div className="max-w-[85%] rounded-2xl rounded-br-md border border-line bg-gradient-to-br from-local/[0.08] to-cloud/[0.08] px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-line text-ink">
-        {text}
-      </div>
+      {images?.length ? <ImageGrid images={images} className="mb-1 w-full" /> : null}
+      {text && (
+        <div className="max-w-[85%] rounded-2xl rounded-br-md border border-line bg-gradient-to-br from-local/[0.08] to-cloud/[0.08] px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-line text-ink">
+          {text}
+        </div>
+      )}
       <span className="pr-1 text-[11px] text-ink-3">{relativeTime(at)}</span>
     </motion.div>
   );

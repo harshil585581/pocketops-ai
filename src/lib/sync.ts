@@ -123,7 +123,7 @@ async function attach(user: User) {
         const remote = change.doc.data() as Session;
         const local = await getSession(id);
         if (getPendingDeletes().includes(id)) continue;
-        if (!local || remote.updatedAt > local.updatedAt) await putSessionRaw({ ...remote, syncedAt: remote.updatedAt });
+        if (!local || remote.updatedAt > local.updatedAt) await putSessionRaw({ ...withLocalPhotos(remote, local), syncedAt: remote.updatedAt });
         else if (local.updatedAt === remote.updatedAt && local.syncedAt !== remote.updatedAt)
           await putSessionRaw({ ...local, syncedAt: remote.updatedAt });
       }
@@ -131,6 +131,26 @@ async function attach(user: User) {
     },
     (e) => set({ status: 'error', error: describe(e) }),
   );
+}
+
+/**
+ * Photos stay on the device that took them: they would quickly push a session past
+ * Firestore's 1 MB document limit.
+ */
+function withoutPhotos(s: Session): Session {
+  const { images: _images, ...rest } = s;
+  return { ...rest, turns: rest.turns?.map((t) => (t.role === 'user' && t.images ? { ...t, images: undefined } : t)) };
+}
+
+/** Keeps this device's photos when a newer copy of the session arrives from Firestore. */
+function withLocalPhotos(remote: Session, local?: Session): Session {
+  if (!local) return remote;
+  const photos = new Map((local.turns ?? []).flatMap((t) => (t.role === 'user' && t.images ? [[t.id, t.images] as const] : [])));
+  return {
+    ...remote,
+    images: local.images,
+    turns: remote.turns?.map((t) => (t.role === 'user' && photos.has(t.id) ? { ...t, images: photos.get(t.id) } : t)),
+  };
 }
 
 let pushTimer: ReturnType<typeof setTimeout> | undefined;
@@ -150,7 +170,7 @@ async function pushChanges() {
     if (dirty.length || deletes.length) set({ status: 'syncing' });
 
     for (const s of dirty) {
-      const { syncedAt: _ignored, ...data } = s;
+      const { syncedAt: _ignored, ...data } = withoutPhotos(s);
       await setDoc(doc(col, s.id), data);
       const latest = await getSession(s.id);
       // Only mark as synced if it wasn't edited again while uploading.

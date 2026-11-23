@@ -58,6 +58,8 @@ export interface Session {
   /** updatedAt value last confirmed in Firestore; behind updatedAt means a pending upload. */
   syncedAt?: number;
   problem: string;
+  /** Photos attached to the problem (JPEG data URLs). Kept on this device only — not synced. */
+  images?: string[];
   category: CategoryId;
   solution: Solution;
   source: InferenceSource;
@@ -103,7 +105,7 @@ interface AssistantMeta {
 }
 
 export type Turn =
-  | { id: string; role: 'user'; createdAt: number; text: string; action?: 'deep' }
+  | { id: string; role: 'user'; createdAt: number; text: string; action?: 'deep'; images?: string[] }
   | (AssistantMeta & { kind: 'reply'; reply: FollowUp })
   | (AssistantMeta & { kind: 'guide'; solution: Solution; depth: 'quick' | 'deep' });
 

@@ -7,6 +7,7 @@
  *   auto, online, long description    → PREFER_IN_CLOUD   (more capable model first)
  *   auto, offline, Nano ready         → ONLY_ON_DEVICE
  *   deep analysis                     → ONLY_IN_CLOUD
+ *   photos attached                   → ONLY_IN_CLOUD     (image understanding runs on cloud Gemini)
  *   local-only / cloud-only overrides → ONLY_ON_DEVICE / ONLY_IN_CLOUD
  */
 import type { InferenceMode } from 'firebase/ai';
@@ -39,6 +40,8 @@ export interface Route {
 export interface RouteOptions {
   problemLength?: number;
   depth?: Depth;
+  /** Number of photos sent with the message. */
+  images?: number;
 }
 
 export const LOCAL_MODEL = 'Gemini Nano';
@@ -68,6 +71,10 @@ export function planRoute({ online, local, mode }: EngineSnapshot, opts: RouteOp
     return online
       ? { ...cloud('Deep analysis runs on the more capable cloud model.', 'only_in_cloud'), model: cloudLabel(getRuntimeConfig().deepModel) }
       : none('Deep analysis needs an internet connection.');
+  }
+  if (opts.images) {
+    if (mode === 'local-only') return none('Photo analysis runs on cloud Gemini — switch off On-device only, or remove the photos.');
+    return online ? cloud('Photos are analysed by cloud Gemini.', 'only_in_cloud') : none('Photo analysis needs an internet connection — remove the photos to run on-device.');
   }
   if (mode === 'local-only') {
     return localReady
@@ -102,21 +109,22 @@ export async function runDiagnosis(
   problem: string,
   category: CategoryId,
   snap: EngineSnapshot,
-  opts: { depth?: Depth; signal?: AbortSignal; onText?: (text: string) => void } = {},
+  opts: { depth?: Depth; signal?: AbortSignal; onText?: (text: string) => void; images?: string[] } = {},
 ): Promise<DiagnosisResult> {
   const depth = opts.depth ?? 'quick';
-  const route = planRoute(snap, { problemLength: problem.length, depth });
+  const images = opts.images ?? [];
+  const route = planRoute(snap, { problemLength: problem.length, depth, images: images.length });
   if (route.target === 'none' || !route.inferenceMode) throw new EngineUnavailableError(route.reason);
 
   const t0 = performance.now();
-  const prompt = buildPrompt(problem, category, depth, getRuntimeConfig().systemInstruction);
+  const prompt = buildPrompt(problem, category, depth, getRuntimeConfig().systemInstruction, images.length);
 
   const cfg = getRuntimeConfig();
   const quick = { model: cfg.cloudModel, timeoutMs: QUICK_TIMEOUT_MS };
   const deep = { model: cfg.deepModel, timeoutMs: DEEP_TIMEOUT_MS };
 
   const attempt = async (mode: InferenceMode, cloud = depth === 'deep' ? deep : quick): Promise<DiagnosisResult> => {
-    const r = await generateWithFirebase(prompt, mode, cloud, opts.signal, opts.onText);
+    const r = await generateWithFirebase(prompt, mode, cloud, opts.signal, opts.onText, images);
     return {
       solution: parseSolution(r.text),
       category,
@@ -174,17 +182,18 @@ export async function runFollowUp(
   session: Session,
   message: string,
   snap: EngineSnapshot,
-  opts: { signal?: AbortSignal; onText?: (text: string) => void } = {},
+  opts: { signal?: AbortSignal; onText?: (text: string) => void; images?: string[] } = {},
 ): Promise<FollowUpResult> {
-  const route = planRoute(snap, { problemLength: message.length });
+  const images = opts.images ?? [];
+  const route = planRoute(snap, { problemLength: message.length, images: images.length });
   if (route.target === 'none' || !route.inferenceMode) throw new EngineUnavailableError(route.reason);
   const t0 = performance.now();
   const cfg = getRuntimeConfig();
-  const prompt = buildFollowUpPrompt(session, message, cfg.systemInstruction);
+  const prompt = buildFollowUpPrompt(session, message, cfg.systemInstruction, images.length);
   const cloud = { model: cfg.cloudModel, timeoutMs: QUICK_TIMEOUT_MS, schema: 'followup' as const };
 
   const attempt = async (mode: InferenceMode): Promise<FollowUpResult> => {
-    const r = await generateWithFirebase(prompt, mode, cloud, opts.signal, opts.onText);
+    const r = await generateWithFirebase(prompt, mode, cloud, opts.signal, opts.onText, images);
     return {
       reply: parseFollowUp(r.text),
       source: r.source,
@@ -213,7 +222,14 @@ export function guideTurn(r: DiagnosisResult): AssistantTurn {
   return { id: turnId(), role: 'assistant', kind: 'guide', createdAt: Date.now(), solution: r.solution, depth: r.depth, source: r.source, model: r.model, durationMs: r.durationMs, inferenceMode: r.inferenceMode, completedSteps: [] };
 }
 
-export const userTurn = (text: string, action?: 'deep') => ({ id: turnId(), role: 'user' as const, createdAt: Date.now(), text, action });
+export const userTurn = (text: string, action?: 'deep', images?: string[]) => ({
+  id: turnId(),
+  role: 'user' as const,
+  createdAt: Date.now(),
+  text,
+  action,
+  ...(images?.length ? { images } : {}),
+});
 
 export class EngineUnavailableError extends Error {
   name = 'EngineUnavailableError';

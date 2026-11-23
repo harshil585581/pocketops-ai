@@ -25,11 +25,17 @@ const DEEP_INSTRUCTION = `This is a DEEP ANALYSIS request. Go beyond quick triag
 
 export type Depth = 'quick' | 'deep';
 
-export function buildPrompt(problem: string, category: CategoryId, depth: Depth, instructionOverride = ''): string {
+const photoNote = (n: number, what = 'of the problem') =>
+  n
+    ? `The user attached ${n === 1 ? 'a photo' : `${n} photos`} ${what}. Look at ${n === 1 ? 'it' : 'them'} carefully: name what you can see (model, labels, error codes, indicator lights, damage, leaks, burn marks) and base the answer on it. If a photo is unclear or unrelated to the problem, say so.`
+    : '';
+
+export function buildPrompt(problem: string, category: CategoryId, depth: Depth, instructionOverride = '', imageCount = 0): string {
   const hint = category === 'other' ? '' : `\nCategory: ${category}`;
   const base = instructionOverride ? `${instructionOverride}\n\n${SYSTEM_INSTRUCTION}` : SYSTEM_INSTRUCTION;
   const deep = depth === 'deep' ? `\n\n${DEEP_INSTRUCTION}` : '';
-  return `${base}${deep}\n\nProblem:${hint}\n"""${problem.trim()}"""`;
+  const photos = imageCount ? `\n\n${photoNote(imageCount)}` : '';
+  return `${base}${deep}${photos}\n\nProblem:${hint}\n"""${problem.trim()}"""`;
 }
 
 const STEP = {
@@ -89,13 +95,13 @@ Shape the reply to what they asked. Respond ONLY with a JSON object matching the
 - suggestions: 3 short follow-up questions they might ask next (max 7 words each).`;
 
 /** Builds a compact follow-up prompt (kept short so it also fits Gemini Nano's context). */
-export function buildFollowUpPrompt(session: Session, message: string, instructionOverride = ''): string {
+export function buildFollowUpPrompt(session: Session, message: string, instructionOverride = '', imageCount = 0): string {
   const sol = session.solution;
   const done = new Set(session.completedSteps);
   const lines = [
     instructionOverride ? `${instructionOverride}\n\n${FOLLOWUP_INSTRUCTION}` : FOLLOWUP_INSTRUCTION,
     '',
-    `Original problem: """${session.problem.trim()}"""`,
+    `Original problem: """${session.problem.trim()}"""${session.images?.length ? ' (sent with photos)' : ''}`,
     `Guide given: ${sol.title}. Likely causes: ${sol.causes.map((c) => c.title).join('; ')}.`,
     `Steps: ${sol.steps.map((st, i) => `${i + 1}. ${st.title}${done.has(i) ? ' (done)' : ''}`).join(' ')}`,
   ];
@@ -104,7 +110,7 @@ export function buildFollowUpPrompt(session: Session, message: string, instructi
   if (history.length) {
     lines.push('', 'Conversation so far:');
     for (const t of history) {
-      if (t.role === 'user') lines.push(`User: ${t.action === 'deep' ? '(asked for a deep analysis)' : t.text}`);
+      if (t.role === 'user') lines.push(`User: ${t.action === 'deep' ? '(asked for a deep analysis)' : t.text}${t.images?.length ? ' (sent photos)' : ''}`);
       else if (t.kind === 'reply')
         lines.push(
           `PocketOps: ${t.reply.message}${t.reply.steps.length ? ` Suggested: ${t.reply.steps.map((x) => x.title).join('; ')}.` : ''}${t.reply.question ? ` Asked: ${t.reply.question.text}` : ''}`,
@@ -112,7 +118,8 @@ export function buildFollowUpPrompt(session: Session, message: string, instructi
       else lines.push(`PocketOps: (deep analysis) ${t.solution.summary}`);
     }
   }
-  lines.push('', `User's new message: """${message.trim()}"""`);
+  if (imageCount) lines.push('', photoNote(imageCount, 'with this message'));
+  lines.push('', `User's new message: """${message.trim() || '(sent photos without a message)'}"""`);
   return lines.join('\n');
 }
 
