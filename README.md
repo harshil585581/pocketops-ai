@@ -1,23 +1,30 @@
-# PocketOps AI
+# PocketOps AI 🛠️⚡
 
-**Offline-first troubleshooting assistant built on Firebase AI Logic hybrid inference.**
-Describe a problem with a machine, device, vehicle or home system and get likely causes, a step-by-step fix
-and safety precautions. Answers come from **Gemini Nano on-device** when it's available and **Gemini Flash in
-the cloud** when it isn't. Every answer says which one produced it.
+[![Firebase AI Logic](https://img.shields.io/badge/Firebase-AI%20Logic-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com/docs/ai-logic)
+[![Gemini Nano](https://img.shields.io/badge/On--Device-Gemini%20Nano-4285F4?logo=google&logoColor=white)](https://developer.chrome.com/docs/ai/built-in)
+[![Cloud Gemini](https://img.shields.io/badge/Cloud-Gemini%20Flash-34A853?logo=google-gemini&logoColor=white)](https://deepmind.google/technologies/gemini/)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Platform: Web (Chrome)](https://img.shields.io/badge/Platform-Web%20(Chrome)-informational)](#)
 
-> Built for #BuildHybridAI · Platform: **Web (Chrome)** · License: Apache 2.0  
-> 🌐 **Live Demo:** [https://pocketops-8008c.web.app](https://pocketops-8008c.web.app) · 📹 **Video Demo:** [https://youtu.be/mzz2GWm9uuI](https://youtu.be/mzz2GWm9uuI)
+> **Offline-first troubleshooting assistant built on Firebase AI Logic hybrid inference.**  
+> Built for the Google **#BuildHybridAI 2026** Hackathon.  
+> 
+> 🌐 **Live Web App:** [https://pocketops-8008c.web.app](https://pocketops-8008c.web.app)  
+> 📹 **Demo Video (YouTube):** [https://youtu.be/mzz2GWm9uuI](https://youtu.be/mzz2GWm9uuI)  
+> 📂 **GitHub Repository:** [https://github.com/harshil585581/pocketops-ai](https://github.com/harshil585581/pocketops-ai)
 
-## Why hybrid matters here
+---
 
-People need troubleshooting help where connectivity is worst: plant rooms, basements, roadsides, rural sites.
-A cloud-only assistant fails exactly when it's needed. PocketOps:
+## 💡 Why Hybrid AI Matters Here
 
-- **Works with no signal.** Gemini Nano runs the diagnosis on the device; the app shell is cached by a service worker.
-- **Stays private by default.** When the local model is ready, the problem description never leaves the device.
-- **Uses the cloud when it adds value.** Long, detailed descriptions and "Deep analysis" requests go to Gemini Flash
-  for more thorough reasoning.
-- **Degrades gracefully.** Offline with no local model, it explains why and surfaces related saved guides.
+People need troubleshooting guidance where connectivity is worst: plant rooms, basements, highway roadsides, elevators, and remote job sites. A cloud-only AI assistant fails completely the moment connectivity drops. 
+
+**PocketOps AI bridges this gap with seamless hybrid intelligence:**
+- **Zero-Signal Troubleshooting:** Gemini Nano runs the diagnostic inference directly on the device via Chrome Built-in AI.
+- **Privacy by Design:** When resolved on-device, your problem description never leaves your browser.
+- **Cloud Intelligence on Demand:** Seamlessly connects to cloud Gemini Flash for deep reasoning, long technical write-ups, or photo diagnoses.
+- **Offline Resilience:** PWA cached by Service Workers + IndexedDB offline persistence with Cloud Firestore sync. Every guide generated is saved locally.
+- **Full Transparency:** Every single diagnostic response explicitly badges its runtime engine (`Generated locally · Gemini Nano` or `Generated in cloud · Gemini Flash`).
 
 ## How Firebase AI Logic is used
 

@@ -1,69 +1,71 @@
-# PocketOps AI — #BuildHybridAI submission
+# PocketOps AI — #BuildHybridAI Submission
 
-**Platform:** Web (Chrome) · **Built with:** Firebase AI Logic (hybrid inference), App Check, Authentication,
-Cloud Firestore, Remote Config, Hosting
+> **Offline-first troubleshooting assistant built on Firebase AI Logic hybrid inference.**  
+> Built for the Google **#BuildHybridAI 2026** Hackathon.  
+> 
+> 🌐 **Live Web App:** [https://pocketops-8008c.web.app](https://pocketops-8008c.web.app)  
+> 📹 **Demo Video (YouTube):** [https://youtu.be/mzz2GWm9uuI](https://youtu.be/mzz2GWm9uuI)  
+> 📂 **GitHub Repository:** [https://github.com/harshil585581/pocketops-ai](https://github.com/harshil585581/pocketops-ai)  
+> 💻 **Platform:** Web (Chrome) · **License:** Apache 2.0
+
+---
 
 ## Inspiration
 
-When something breaks (a machine on a job site, a car on a roadside, a breaker in a basement), help is needed
-right away, and that's often where the signal is worst. Most AI assistants stop working the moment the network
-drops. We wanted an assistant that keeps working there.
+When something breaks—a car on an isolated highway, a cooling pump in a concrete basement, or a circuit breaker during an outage—help is needed urgently. Unfortunately, these situations occur right where cell reception and internet connectivity are at their absolute worst.
 
-## What it does
+Most modern GenAI assistants freeze or fail the moment connection is lost. We built **PocketOps AI** to solve this real-world failure point: an offline-first technical diagnostic partner that diagnoses problems locally with **Gemini Nano** when offline or private, and seamlessly routes to **Gemini Flash in the cloud** for high-complexity queries when online.
 
-PocketOps AI turns a plain-language description of a problem into a structured troubleshooting guide:
-likely causes ranked by likelihood, safety precautions shown first, a step-by-step checklist that remembers
-your progress, and what to do if the problem persists.
+---
 
-- **On-device first.** With Gemini Nano available in Chrome, the diagnosis runs locally: private, fast and
-  fully offline.
-- **Cloud when it helps.** If the local model isn't available, Firebase AI Logic falls back to Gemini Flash.
-  Long, detailed descriptions go to the cloud first, and a **Deep analysis** button hands an on-device triage
-  to Gemini Flash for confirming tests and more thorough steps.
-- **Conversations, not one-shot answers.** Each problem becomes a thread. If a step doesn't work, tap "Didn't work?"
-  or just reply. PocketOps answers with new steps using the whole history as context, on-device or in the cloud.
-  Threads are marked Resolved when the fix works.
-- **Always transparent.** Each answer is labelled with where it ran, using the SDK's `inferenceSource`.
-- **Graceful offline mode.** With no network and no local model, the app explains why and shows related guides
-  saved on the device.
-- **Saved and synced.** Guides are stored in IndexedDB for offline use and mirrored to Cloud Firestore. An
-  anonymous account backs them up; signing in with Google syncs them across devices.
+## What It Does
 
-## How we built it
+PocketOps AI transforms natural-language problem descriptions into structured, actionable troubleshooting plans:
 
-- **Firebase AI Logic hybrid inference** (`firebase/ai`): one `getGenerativeModel` call with `onDeviceParams`
-  (JSON-schema-constrained output for Gemini Nano) and `inCloudParams` (Gemini Flash, JSON output). A small router
-  picks `PREFER_ON_DEVICE`, `PREFER_IN_CLOUD`, `ONLY_ON_DEVICE` or `ONLY_IN_CLOUD` per request based on
-  connectivity, model availability, description length and the user's choice.
-- **App Check** with reCAPTCHA Enterprise protects AI Logic and Firestore.
-- **Remote Config** controls the cloud model, the long-description threshold and the system instruction without
-  a redeploy, and the last values are cached for offline use.
-- **Authentication + Firestore**: anonymous sign-in, optional Google account linking, per-user security rules,
-  and last-write-wins sync with an offline queue.
-- **React + TypeScript + Vite + Tailwind CSS**, delivered as an installable PWA with a service worker, and hosted
-  on Firebase Hosting.
+- **⚡ Instant Local Diagnostics (Gemini Nano):** Diagnoses device and equipment failures directly in the browser with 0 ms network latency and 100% offline capability.
+- **☁️ Cloud Depth (Gemini Flash via Firebase AI Logic):** Leverages cloud intelligence when connected, for deep analytical breakdowns, photo inspections, and high-complexity repairs.
+- **🔄 Dynamic Troubleshooting Threads:** Unlike one-off answer bots, every problem becomes an ongoing conversational thread. If a step fails, users tap *"Didn't work?"* and receive updated instructions taking the entire conversation history into account.
+- **🏷️ Runtime Transparency:** Every response explicitly displays which model and runtime environment generated it (`Generated locally · Gemini Nano` vs `Generated in cloud · Gemini Flash`).
+- **💾 Local-First Persistence & Cloud Sync:** Every guide is cached in IndexedDB for offline access, with automatic background synchronization to **Cloud Firestore** and **Firebase Authentication**.
+- **🛡️ Built-in Resilience:** If connectivity is lost and no local model exists, PocketOps gracefully falls back to intelligent token-matching across previously saved guides on the device.
 
-## Challenges
+---
 
-- Making the on-device and cloud models return the same structured format, so the UI can render either one
-  identically.
-- Designing the offline path so the app is still useful when no AI is reachable.
-- Keeping local-first storage and cloud sync consistent across offline edits, deletes and account changes.
+## How We Built It
 
-## What we learned
+- **Firebase AI Logic SDK (`firebase/ai`):** The core engine. We configure a unified `getGenerativeModel` with `onDeviceParams` (schema-constrained structured JSON for Gemini Nano) and `inCloudParams` (Gemini Flash). 
+- **Intelligent Hybrid Router:** Evaluates real-time device connectivity, model readiness, character payload, and user preferences (`prefer_on_device`, `only_on_device`, `prefer_in_cloud`, `only_in_cloud`).
+- **Firebase App Check:** Integrated with reCAPTCHA Enterprise to safeguard AI Logic and Firestore from unauthorized calls and abuse.
+- **Cloud Firestore & Authentication:** Anonymous sign-in allows immediate frictionless offline/online saving; optional Google Authentication links identities to sync troubleshooting records across devices.
+- **Firebase Remote Config:** Dynamically updates default cloud models, system instructions, and routing thresholds without requiring client redeployments.
+- **Frontend Stack & PWA:** Built with React 19, TypeScript, Vite, and Tailwind CSS; configured with Workbox Service Workers for full offline PWA installation. Hosted on **Firebase Hosting**.
 
-A hybrid SDK changes the product question from "which model?" to "which model for this request?". On-device
-inference covers speed, privacy and availability, the cloud covers depth, and the user always knows which one
-answered.
+---
 
-## What's next
+## Challenges We Overcame
 
-- An Android app on the same Firebase project with Gemini Nano, sharing synced guides
-- Photo input (show the error code or the broken part)
-- Shared team workspaces for field technicians
+1. **Schema Consistency Across Local & Cloud Models:** Ensuring that Chrome's local Gemini Nano and cloud-based Gemini Flash produced identical JSON schemas for causes, likelihoods, safety tips, and actionable steps without breaking the UI.
+2. **Offline-First State Synchronization:** Designing an IndexedDB database layer that seamlessly queues offline operations and handles conflict resolution with Cloud Firestore upon reconnection.
+3. **Graceful Degradation:** Guaranteeing that the user never faces a dead-end screen—even in zero-connectivity environments with no model downloaded.
+
+---
+
+## What We Learned
+
+Working with **Firebase AI Logic** highlighted that hybrid AI transforms architecture from asking *"which model should I pick?"* to *"which runtime is best for this specific interaction?"*. Having a unified SDK that manages both on-device inference and cloud fallbacks enables a whole new class of offline-resilient, privacy-conscious applications.
+
+---
+
+## What's Next for PocketOps AI
+
+- **Multi-Platform Support:** Expanding to Android using Gemini Nano with the same unified Firebase backend.
+- **Visual Diagnostics:** Expanding multimodal capabilities for on-device part identification and multimeter reading analysis.
+- **Collaborative Fleet Workspaces:** Enabling field maintenance teams to share synced troubleshooting logs and resolution notes.
+
+---
 
 ## Links
 
-- Live app: https://pocketops-8008c.web.app
-- Repository: https://github.com/harshil585581/pocketops-ai
-- Demo video: https://youtu.be/mzz2GWm9uuI
+- **Live Web App:** [https://pocketops-8008c.web.app](https://pocketops-8008c.web.app)
+- **GitHub Repository:** [https://github.com/harshil585581/pocketops-ai](https://github.com/harshil585581/pocketops-ai)
+- **Demo Video (YouTube):** [https://youtu.be/mzz2GWm9uuI](https://youtu.be/mzz2GWm9uuI)
