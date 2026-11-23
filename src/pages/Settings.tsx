@@ -17,7 +17,6 @@ import {
   Wifi,
   WifiOff,
 } from 'lucide-react';
-import { RoutingMatrix } from '../components/RoutingMatrix';
 import { EngineStatus } from '../components/Shell';
 import { Segmented, StatusDot, cx } from '../components/ui';
 import { cloudLabel, LOCAL_MODEL } from '../engine';
@@ -223,7 +222,7 @@ export default function Settings() {
           <div className="hidden lg:block">
             <EngineStatus static />
           </div>
-          <RoutingMatrix />
+
         </aside>
       </div>
 

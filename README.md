@@ -5,7 +5,8 @@ Describe a problem with a machine, device, vehicle or home system and get likely
 and safety precautions. Answers come from **Gemini Nano on-device** when it's available and **Gemini Flash in
 the cloud** when it isn't. Every answer says which one produced it.
 
-> Built for #BuildHybridAI · Platform: **Web (Chrome)** · License: Apache 2.0
+> Built for #BuildHybridAI · Platform: **Web (Chrome)** · License: Apache 2.0  
+> 🌐 **Live Demo:** [https://pocketops-8008c.web.app](https://pocketops-8008c.web.app) · 📹 **Video Demo:** [https://youtu.be/mzz2GWm9uuI](https://youtu.be/mzz2GWm9uuI)
 
 ## Why hybrid matters here
 

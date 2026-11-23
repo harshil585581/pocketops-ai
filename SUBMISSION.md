@@ -64,6 +64,6 @@ answered.
 
 ## Links
 
-- Live app: _add your Firebase Hosting URL_
-- Repository: _add your GitHub URL_
-- Demo video: _add your YouTube URL_
+- Live app: https://pocketops-8008c.web.app
+- Repository: https://github.com/harshil585581/pocketops-ai
+- Demo video: https://youtu.be/mzz2GWm9uuI

@@ -36,7 +36,7 @@ import {
 } from '../engine';
 import { categoryById } from '../lib/categories';
 import { deleteSession, getSession, updateSession } from '../lib/db';
-import { formatDuration, relativeTime } from '../lib/format';
+import { relativeTime } from '../lib/format';
 import { imageFiles, useImageAttachments } from '../lib/images';
 import { getRuntimeConfig } from '../lib/remoteConfig';
 import type { AssistantTurn, InferenceSource, Session, Step, Turn } from '../lib/types';
@@ -567,11 +567,19 @@ export default function Thread() {
 
 function RouteHint({ route }: { route: Route }) {
   if (route.target === 'none') return null;
-  const Icon = route.target === 'on-device' ? Cpu : Cloud;
+  const isLocal = route.target === 'on-device';
+  const Icon = isLocal ? Cpu : Cloud;
   return (
-    <span className={cx('mt-1 flex items-center gap-1 text-[11px]', route.target === 'on-device' ? 'text-local' : 'text-cloud')}>
+    <span
+      className={cx(
+        'mt-1.5 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11.5px] font-medium',
+        isLocal
+          ? 'bg-local/10 text-local'
+          : 'bg-cloud/10 text-cloud',
+      )}
+    >
       <Icon className="size-3" />
-      {route.target === 'on-device' ? 'On-device' : 'Cloud'} · <span className="font-mono">{route.model}</span>
+      {isLocal ? 'On-device' : 'Cloud'} · <span className="font-mono">{route.model}</span>
     </span>
   );
 }
@@ -606,8 +614,8 @@ function UserBubble({ text, images, at }: { text: string; images?: string[]; at:
 function Assistant({
   source,
   model,
-  durationMs,
-  inferenceMode,
+  durationMs: _durationMs,
+  inferenceMode: _inferenceMode,
   at,
   extra,
   children,
@@ -629,8 +637,6 @@ function Assistant({
           {extra}
           <span className="font-mono text-[10.5px] text-ink-3">
             {relativeTime(at)}
-            {durationMs > 0 && ` · ${formatDuration(durationMs)}`}
-            {inferenceMode && ` · ${inferenceMode.toUpperCase()}`}
           </span>
         </div>
         {children}

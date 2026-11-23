@@ -129,6 +129,7 @@ function SidebarContent({ onNavigate }: { onNavigate?(): void }) {
   const groups = useMemo(() => {
     const query = q.trim().toLowerCase();
     const list = [...sessions]
+      .filter((s) => !s.sample)
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .filter((s) => !query || `${s.solution.title} ${s.problem}`.toLowerCase().includes(query));
     const map = new Map<string, Session[]>();

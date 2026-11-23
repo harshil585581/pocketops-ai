@@ -87,12 +87,7 @@ export function planRoute({ online, local, mode }: EngineSnapshot, opts: RouteOp
   if (!online) {
     return localReady ? device('Offline — running fully on-device.', 'only_on_device') : none('You are offline and the local model is not available.');
   }
-  if ((opts.problemLength ?? 0) >= getRuntimeConfig().longProblemChars) {
-    return cloud('Detailed description — sent to cloud Gemini first, with on-device fallback.', 'prefer_in_cloud');
-  }
-  return localReady
-    ? device('Gemini Nano ready — preferring private on-device inference.', 'prefer_on_device')
-    : cloud('Gemini Nano not ready — Firebase AI Logic falls back to cloud Gemini.', 'prefer_on_device');
+  return cloud('Connected — using cloud Gemini.', 'prefer_in_cloud');
 }
 
 export interface DiagnosisResult {

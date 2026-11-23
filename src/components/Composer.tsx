@@ -90,7 +90,7 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
           onAddImages(files);
         }}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && ready) {
+          if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && ready) {
             e.preventDefault();
             onSubmit();
           }
@@ -110,25 +110,20 @@ export const Composer = forwardRef<ComposerHandle, Props>(function Composer(
         <div className="flex min-w-0 flex-1 items-center gap-2 text-[12.5px]" title={route.reason}>
           <span
             className={cx(
-              'grid size-6 shrink-0 place-items-center rounded-md',
-              route.target === 'on-device' && 'bg-local/12 text-local',
-              route.target === 'cloud' && 'bg-cloud/12 text-cloud',
-              route.target === 'none' && 'bg-warn/12 text-warn',
+              'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-medium',
+              route.target === 'on-device' && 'bg-local/10 text-local',
+              route.target === 'cloud' && 'bg-cloud/10 text-cloud',
+              route.target === 'none' && 'bg-warn/10 text-warn',
             )}
           >
             <RouteIcon className="size-3.5" />
-          </span>
-          <span className="min-w-0 truncate text-ink-2">
             {route.target === 'none' ? (
               <>Saved guidance only</>
             ) : (
               <>
-                Runs {route.target === 'on-device' ? 'on-device' : 'in cloud'}
-                <span className="text-ink-3"> · </span>
-                <span className="font-mono text-ink">{route.model}</span>
-                {route.inferenceMode && (
-                  <span className="hidden font-mono text-[11px] text-ink-3 md:inline"> · {route.inferenceMode.toUpperCase()}</span>
-                )}
+                {route.target === 'on-device' ? 'On-device' : 'Cloud'}
+                <span className="text-current/60"> · </span>
+                <span className="font-mono">{route.model}</span>
               </>
             )}
           </span>

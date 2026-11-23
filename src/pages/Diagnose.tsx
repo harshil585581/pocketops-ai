@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { Wifi, WifiOff } from 'lucide-react';
 import { Composer, type ComposerHandle } from '../components/Composer';
 import { StreamingAnswer } from '../components/Answer';
 import { ErrorPanel, OfflineFallback } from '../components/Fallback';
-import { Logo, StatusDot } from '../components/ui';
+import { Logo } from '../components/ui';
 import { EngineUnavailableError, planRoute, runDiagnosis, sessionFromResult, type Route } from '../engine';
 import { detectCategory } from '../lib/categories';
 import { putSession } from '../lib/db';
@@ -105,22 +104,12 @@ export default function Diagnose() {
           transition={{ duration: 0.5, ease: [0.25, 1, 0.5, 1] }}
           className="mb-7 text-center lg:mb-9"
         >
-          <div className="mb-4 flex flex-wrap items-center justify-center gap-2">
-            <span className="inline-flex h-6 items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 text-[11.5px] font-medium text-ink-2">
-              {engine.online ? <Wifi className="size-3" /> : <WifiOff className="size-3 text-warn" />}
-              {engine.online ? 'Online' : 'Offline'}
-            </span>
-            <span className="inline-flex h-6 items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 text-[11.5px] font-medium text-ink-2">
-              <StatusDot tone={engine.local === 'available' ? 'local' : 'muted'} pulse={engine.local === 'available'} />
-              Gemini Nano {engine.local === 'available' ? 'ready' : 'not ready'}
-            </span>
-          </div>
           <h1 className="text-[34px] leading-[1.05] font-semibold tracking-[-0.035em] text-balance sm:text-[44px]">
             What’s going <span className="text-brand">wrong?</span>
           </h1>
           <p className="mx-auto mt-3 max-w-md text-[14.5px] leading-relaxed text-pretty text-ink-2">
             {engine.online
-              ? 'Works even without signal — every fix you get is saved here, so you can search it offline.'
+              ? 'Works even without signal - every fix you get is saved here, so you can search it offline.'
               : 'You’re offline, but you’re covered — describe the problem and we’ll search your saved fixes on this device.'}
           </p>
         </motion.header>
